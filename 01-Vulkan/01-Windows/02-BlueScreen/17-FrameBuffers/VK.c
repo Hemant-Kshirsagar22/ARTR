@@ -1868,7 +1868,7 @@ VkResult createFrameBuffers(void)
     vkFramebufferCreateInfo.pAttachments = vkImageView_attachments_array;
     vkFramebufferCreateInfo.width = vkExtent2D_swapchain.width;
     vkFramebufferCreateInfo.height = vkExtent2D_swapchain.height;
-    vkFramebufferCreateInfo.layers = vkExtent2D_swapchain.layers;
+    vkFramebufferCreateInfo.layers = 1;
 
     //  Allocate the framebuffer array by malloc equal to the sizeof swapchain image count.
     vkFramebuffer_array = (VkFramebuffer *)malloc(sizeof(VkFramebuffer) * swapchainImageCount);
@@ -1887,7 +1887,7 @@ VkResult createFrameBuffers(void)
 
     fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS START ================================\n\n");
     
-    return(VkResult);
+    return(vkResult);
 }
 
 /**
