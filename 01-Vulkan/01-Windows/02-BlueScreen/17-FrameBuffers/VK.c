@@ -90,6 +90,9 @@ VkCommandBuffer *vkCommandBuffer_array = NULL;
 // renderpass
 VkRenderPass vkRenderPass = VK_NULL_HANDLE;
 
+// framebuffers
+VkFramebuffer *vkFramebuffer_array = NULL;
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
     // Function declarations
@@ -349,7 +352,7 @@ VkResult initialize(void)
     VkResult createCommandPool(void);
     VkResult createCommandBuffer(void);
     VkResult createRenderPass(void);
-
+    VkResult createFrameBuffers(void);
 
     // variable declarations
     VkResult vkResult = VK_SUCCESS;
@@ -483,6 +486,19 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createRenderPass() success\n\n", __func__);
     }
 
+
+    vkResult = createFrameBuffers();
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createFrameBuffers() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createFrameBuffers() success\n\n", __func__);
+    }
+
     fprintf(gpFile, "================================== INITIALIZATION END ==================================\n\n");
     return (vkResult);
 }
@@ -533,7 +549,20 @@ void uninitialize(void)
         vkDeviceWaitIdle(vkDevice);
         fprintf(gpFile, "%s()-> vkDeviceWaitIdle is done\n", __func__);
     }
-    // destroy 
+
+    // destroy framebuffers
+    for(uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkDestroyFramebuffer(vkDevice, vkFramebuffer_array[i], NULL);
+    }
+
+    if(vkFramebuffer_array)
+    {
+        free(vkFramebuffer_array);
+        vkFramebuffer_array = NULL;
+    }
+
+    // destroy vkRenderPass
     if(vkRenderPass)
     {
         vkDestroyRenderPass(vkDevice, vkRenderPass, NULL);
@@ -1816,6 +1845,51 @@ VkResult createRenderPass(void)
     return(vkResult);
 }
 
+VkResult createFrameBuffers(void)
+{
+    // variable declarations
+    VkResult vkResult = VK_SUCCESS;
+
+    // code
+    fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS START ================================\n\n");
+
+    VkImageView vkImageView_attachments_array[1];
+    memset((void *)vkImageView_attachments_array, 0, sizeof(VkImageView) * _ARRAYSIZE(vkImageView_attachments_array));
+
+    //
+    VkFramebufferCreateInfo vkFramebufferCreateInfo;
+    memset((void *)&vkFramebufferCreateInfo, 0, sizeof(VkFramebufferCreateInfo));
+
+    vkFramebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    vkFramebufferCreateInfo.pNext = NULL;
+    vkFramebufferCreateInfo.flags = 0;
+    vkFramebufferCreateInfo.renderPass = vkRenderPass;
+    vkFramebufferCreateInfo.attachmentCount = _ARRAYSIZE(vkImageView_attachments_array);
+    vkFramebufferCreateInfo.pAttachments = vkImageView_attachments_array;
+    vkFramebufferCreateInfo.width = vkExtent2D_swapchain.width;
+    vkFramebufferCreateInfo.height = vkExtent2D_swapchain.height;
+    vkFramebufferCreateInfo.layers = vkExtent2D_swapchain.layers;
+
+    //  Allocate the framebuffer array by malloc equal to the sizeof swapchain image count.
+    vkFramebuffer_array = (VkFramebuffer *)malloc(sizeof(VkFramebuffer) * swapchainImageCount);
+
+    for(uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkImageView_attachments_array[0] = swapchainImageView_array[i];
+        vkResult = vkCreateFramebuffer(vkDevice, &vkFramebufferCreateInfo, NULL, &vkFramebuffer_array[i]);
+
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> vkCreateFramebuffer() failed for i = %d (ERROR CODE : %d)\n\n", __func__, i, vkResult);
+            return(vkResult);
+        }
+    }
+
+    fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS START ================================\n\n");
+    
+    return(VkResult);
+}
+
 /**
 -----------------------------------------------------------------------------------------------
  
@@ -1828,6 +1902,14 @@ VkResult createRenderPass(void)
     Remeber : here also we need to specify interdependency of subpasses if needed and also attachment information in the form of image views which will used by framebuffer letter to create the actual RenderPass.
  5. in uninitialze destroy the renderpass by using vkDestroyRenderPass().
  
+ STEPS FOR FRAME BUFFERS
+ -----------------------
+ 1. Declare an array of vkImageView equal to number of attachment means in our example array of one attachment.
+ 2. Declare and inistalize VkFrameBufferCreateInfo structure.
+ 3. Allocate the framebuffer array by malloc equal to the sizeof swapchain image count.
+ 4. start a loop for swapchain image count and call vkCreateFrameBuffer() to create FrameBuffers. 
+ 5. In uninitialize destroy framebuffer in a loop for swapchain image count.
+
  -----------------------------------------------------------------------------------------------
  Notes:
  all struct, enum and types names = Vk...
