@@ -402,7 +402,7 @@ VkResult initialize(void)
     vkResult = createVulkanDevice();
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s()-> createVulkanDevice() failed !!!\n\n", __func__);
+        fprintf(gpFile, "%s()-> createVulkanDevice() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
         return (vkResult);
     }
     else
@@ -1633,7 +1633,7 @@ VkResult createImagesAndImageView(void)
 
         if (vkResult != VK_SUCCESS)
         {
-            fprintf(gpFile, "%s()-> vkCreateImageViews() failed  for i = %d (ERROR CODE L : %d )!!!\n\n", __func__, i, vkResult);
+            fprintf(gpFile, "%s()-> vkCreateImageViews() failed  for i = %d (ERROR CODE : %d )!!!\n\n", __func__, i, vkResult);
             return (vkResult);
         }
         else
@@ -1668,7 +1668,7 @@ VkResult createCommandPool(void)
 
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s()-> vkCreateCommandPool() failed (ERROR CODE L : %d )!!!\n\n", __func__, vkResult);
+        fprintf(gpFile, "%s()-> vkCreateCommandPool() failed (ERROR CODE : %d )!!!\n\n", __func__, vkResult);
         return (vkResult);
     }
     else
@@ -1708,7 +1708,7 @@ VkResult createCommandBuffer(void)
 
         if (vkResult != VK_SUCCESS)
         {
-            fprintf(gpFile, "%s()-> vkAllocateCommandBuffers() failed  for i = %d (ERROR CODE L : %d )!!!\n\n", __func__, i, vkResult);
+            fprintf(gpFile, "%s()-> vkAllocateCommandBuffers() failed  for i = %d (ERROR CODE : %d )!!!\n\n", __func__, i, vkResult);
             return (vkResult);
         }
         else
