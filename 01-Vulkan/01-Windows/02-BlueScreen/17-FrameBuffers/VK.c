@@ -1883,6 +1883,10 @@ VkResult createFrameBuffers(void)
             fprintf(gpFile, "%s()-> vkCreateFramebuffer() failed for i = %d (ERROR CODE : %d)\n\n", __func__, i, vkResult);
             return(vkResult);
         }
+        else
+        {
+            fprintf(gpFile, "%s()-> vkCreateFramebuffer() success for i = %d\n\n", __func__, i);
+        }
     }
 
     fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS START ================================\n\n");
