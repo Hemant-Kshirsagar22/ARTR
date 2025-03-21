@@ -1889,7 +1889,7 @@ VkResult createFrameBuffers(void)
         }
     }
 
-    fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS START ================================\n\n");
+    fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS END ================================\n\n");
     
     return(vkResult);
 }

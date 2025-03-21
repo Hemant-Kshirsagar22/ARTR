@@ -98,6 +98,8 @@ VkSemaphore vkSemaphore_backBuffer = VK_NULL_HANDLE;
 VkSemaphore vkSemaphore_renderComplete = VK_NULL_HANDLE;
 VkFence *vkFence_array = NULL;
 
+// clear color values
+VkClearColorValue vkClearColorValue;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
@@ -361,7 +363,8 @@ VkResult initialize(void)
     VkResult createFrameBuffers(void);
     VkResult createSemaphores(void);
     VkResult createFences(void);
-
+    VkResult buildCommandBuffers(void);
+    
     // variable declarations
     VkResult vkResult = VK_SUCCESS;
 
@@ -494,7 +497,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createRenderPass() success\n\n", __func__);
     }
 
-
+    // create frame buffer
     vkResult = createFrameBuffers();
     if (vkResult != VK_SUCCESS)
     {
@@ -531,6 +534,26 @@ VkResult initialize(void)
     else
     {
         fprintf(gpFile, "%s()-> createFences() success\n\n", __func__);
+    }
+
+    // initialize clearColorValue
+    memset((void *)&vkClearColorValue, 0, sizeof(VkClearColorValue));
+    vkClearColorValue.float32[0] = 0.0f;
+    vkClearColorValue.float32[1] = 0.0f;
+    vkClearColorValue.float32[2] = 1.0f;
+    vkClearColorValue.float32[3] = 1.0f; // analogous to glClearColor
+
+    // build command buffer
+    vkResult = buildCommandBuffers();
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> buildCommandBuffers() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> buildCommandBuffers() success\n\n", __func__);
     }
 
     fprintf(gpFile, "================================== INITIALIZATION END ==================================\n\n");
@@ -2043,6 +2066,101 @@ VkResult createFences(void)
     return(vkResult);
 }
 
+VkResult buildCommandBuffers(void)
+{
+    // variable declarations
+    VkResult vkResult = VK_SUCCESS;
+
+    // code
+    fprintf(gpFile, "\n======================== BUILD COMMAND BUFFERS START ================================\n\n");
+    
+    // loop per swapchainImageCount
+    for(uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        // reset command buffers
+        vkResult = vkResetCommandBuffer(vkCommandBuffer_array[i], 0); // 0 means dont release the resources created by commandPool by these command buffers
+
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> vkResetCommandBuffer() failed for i = %d (ERROR CODE : %d)\n\n", __func__, i, vkResult);
+            return(vkResult);
+        }
+        else
+        {
+            fprintf(gpFile, "%s()-> vkResetCommandBuffer() success for i = %d\n", __func__, i);
+        }
+
+        fprintf(gpFile,"\n\n");
+
+        // 
+        VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
+        memset((void *)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
+
+        vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        vkCommandBufferBeginInfo.pNext = NULL;
+        vkCommandBufferBeginInfo.flags = 0; // indecates we are only PRIMARY COMMAND BUFFER or we are not going to use this command buffer between multiple threads.
+        
+        vkResult = vkBeginCommandBuffer(vkCommandBuffer_array[i], &vkCommandBufferBeginInfo);
+        
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> vkBeginCommandBuffer() failed for i = %d (ERROR CODE : %d)\n\n", __func__, i, vkResult);
+            return(vkResult);
+        }
+        else
+        {
+            fprintf(gpFile, "%s()-> vkBeginCommandBuffer() success for i = %d\n", __func__, i);
+        }
+        
+        fprintf(gpFile,"\n\n");
+
+        // set clear value
+        VkClearValue vkClearValue_array[1];
+        memset((void *)vkClearValue_array, 0, sizeof(VkClearValue) * _ARRAYSIZE(vkClearValue_array));
+
+        vkClearValue_array[0].color = vkClearColorValue;
+
+        // declare memset and initialize VkRenderPassBeginInfo structure.
+        VkRenderPassBeginInfo vkRenderPassBeginInfo;
+        memset((void *)&vkRenderPassBeginInfo, 0, sizeof(VkRenderPassBeginInfo));
+
+        vkRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        vkRenderPassBeginInfo.pNext = NULL;
+        vkRenderPassBeginInfo.renderPass = vkRenderPass;
+        vkRenderPassBeginInfo.renderArea.offset.x = 0;
+        vkRenderPassBeginInfo.renderArea.offset.y = 0;
+        vkRenderPassBeginInfo.renderArea.extent.width = vkExtent2D_swapchain.width;
+        vkRenderPassBeginInfo.renderArea.extent.height = vkExtent2D_swapchain.height;
+        vkRenderPassBeginInfo.clearValueCount = _ARRAYSIZE(vkClearValue_array);
+        vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
+        vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[i];
+
+        // begin the renderPass
+        vkCmdBeginRenderPass(vkCommandBuffer_array[i],&vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        // here we should call vulkan drawing functions
+
+        // end render pass
+        vkCmdEndRenderPass(vkCommandBuffer_array[i]);
+
+        // end command buffer record
+        vkResult = vkEndCommandBuffer(vkCommandBuffer_array[i]);
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> vkEndCommandBuffer() failed for i = %d (ERROR CODE : %d)\n\n", __func__, i, vkResult);
+            return(vkResult);
+        }
+        else
+        {
+            fprintf(gpFile, "%s()-> vkEndCommandBuffer() success for i = %d\n", __func__, i);
+        }
+
+        fprintf(gpFile,"\n\n");
+    }
+    
+    fprintf(gpFile, "\n======================== BUILD COMMAND BUFFERS END ================================\n\n");
+    return(vkResult);
+}
 /**
 -----------------------------------------------------------------------------------------------
  
@@ -2077,6 +2195,24 @@ VkResult createFences(void)
  6. Now in a loop call vkCreateFence() to initialize our global fences array.
  7. In uninitialize() first in a loop with swapchain image count as counter destroy fence array objects using vkDestroyFence() and then actally free the allocated fences array by using free().
  8. destroy both global semaphore objects with 2 separate calls to vkDestroySemaphore().
+-----------------------------------------------------------------------------------------------
+
+STEP FOR BUILD COMMAND BUFFERS
+------------------------------
+1. start a loop with swapchainImageCount as counter.
+2. beside the loop call vkResetCommandBuffer() to reset the content of commandBuffer.
+3. then declare, memset and initialize vkCommandBufferBeginInfo structure.
+4. Now call vkBeginCommandBuffer() API to record vulkan drawing related commands do error chacking.
+5. Declare, memset and initialize struct array of VkClearValue type internally it is union. Our array will be of 1 element this number depends upon the number of attachmentes in the frameBuffer. As we have only 1 attachment i.e. color attachment hence our array is of 1 element. when our array becomes size of 2 then the color member is meaing less because is uinion. to do this initalize VkClearColorValue struct to do this declare globally vkClearColorValue structure variable and memset and initialize it in initalize().
+    REMEMBER : We are going to clear .color member of vkClearValue structure by VkClearColorValue structure because in step 16-RenderPass we specified .loadOp member of VkAttachmentDescription structure to VK_ATTACHMENT_LOAD_OP_CLEAR.
+6. Then declare memset and initialize VkRenderPassBeginInfo structure.
+7. Begin renderPass by vkCmdBeginRenderPass().
+    REMEMBER : The code written inside "beginRenderPass" and endRenderPass itself is the code of subpass if no subpass is explicitly created. In other word if there is no subpass declared there is always atleast on subpass.
+8. End renderPass by calling vkCmdEndRenderPass().
+9. End the recording of commandBuffer by calling vkEndCommandBuffer() and do error checking. 
+10. close the loop
+
+
 -----------------------------------------------------------------------------------------------
 
  Notes:
