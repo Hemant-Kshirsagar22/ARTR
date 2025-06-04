@@ -1,0 +1,4 @@
+CLS
+cl.exe /MD /std:c++17 /c /EHsc /I C:\VulkanSDK\Vulkan\Include /I C:\VulkanSDK\Vulkan\Include\glslang VK.cpp
+rc.exe VK.rc
+link.exe VK.obj VK.res /LIBPATH:C:\VulkanSDK\Vulkan\Lib user32.lib gdi32.lib /SUBSYSTEM:WINDOWS
