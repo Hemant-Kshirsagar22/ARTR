@@ -2724,11 +2724,15 @@ VkResult createVertexBuffer(void)
     // local variable declarations
     VkResult vkResult = VK_SUCCESS;
     
-    float triangle_position[] = 
+    float rectangle_position[] = 
     {
-        0.0f, 1.0f, 0.0f,
-        -1.0f, -1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f
+        1.0f, 1.0f, 0.0f, // right top
+        -1.0f, 1.0f, 0.0f, // left top
+        -1.0f, -1.0f, 0.0f, // left bottom
+        // left bottom
+        -1.0f, -1.0f, 0.0f // left bottom
+        1.0f, -1.0f, 0.0f, // right bottom
+        1.0f, 1.0f, 0.0f // right top
     };
 
     // code
@@ -2744,7 +2748,7 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.pNext = NULL;
     vkBufferCreateInfo.flags = 0; // flags are used for scatterd / sparce buffer
-    vkBufferCreateInfo.size = sizeof(triangle_position);
+    vkBufferCreateInfo.size = sizeof(rectangle_position);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
     // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
@@ -2824,7 +2828,7 @@ VkResult createVertexBuffer(void)
     }
 
     // actual memeory mapped io
-    memcpy(data, triangle_position, sizeof(triangle_position));
+    memcpy(data, rectangle_position, sizeof(rectangle_position));
 
     vkUnmapMemory(vkDevice, vertexData_position.vkDeviceMemory);
 
@@ -3841,7 +3845,7 @@ VkResult buildCommandBuffers(void)
 
         // here we should call vulkan drawing functions
         vkCmdDraw(vkCommandBuffer_array[i], 
-            3, // no of vertices
+            6, // no of vertices
             1, // no of instance
             0, // first vertex
             0 // first instace
