@@ -120,7 +120,7 @@ VkDebugReportCallbackEXT vkDebugReportCallbackEXT = VK_NULL_HANDLE;
 PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT_fnptr = NULL;
 
 // vertex buffer related variable
-typedef struct 
+typedef struct
 {
     VkBuffer vkBuffer;
     VkDeviceMemory vkDeviceMemory;
@@ -161,7 +161,7 @@ VkDescriptorPool vkDescriptorPool = VK_NULL_HANDLE;
 //descriptor set
 VkDescriptorSet vkDescriptorSet = VK_NULL_HANDLE;
 
-// for pipeline 
+// for pipeline
 VkViewport vkViewport;
 VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
@@ -583,7 +583,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createVertexBuffer() success\n\n", __func__);
     }
 
-    // create 
+    // create
     vkResult = createUniformBuffer();
     if (vkResult != VK_SUCCESS)
     {
@@ -972,9 +972,9 @@ VkResult display(void)
     }
 
     // aquaire index of next swapchain image
-    vkResult = vkAcquireNextImageKHR(vkDevice, 
+    vkResult = vkAcquireNextImageKHR(vkDevice,
                                     vkSwapchainKHR,
-                                    UINT64_MAX, // time in nano sec, here we are waiting for swapchain next Image, if we don't get image within timout return VK_NOT_READY 
+                                    UINT64_MAX, // time in nano sec, here we are waiting for swapchain next Image, if we don't get image within timout return VK_NOT_READY
                                     vkSemaphore_backBuffer, // waiting for previous operation to release swapchain image.
                                     VK_NULL_HANDLE,
                                     &currentImageIndex);
@@ -992,7 +992,7 @@ VkResult display(void)
     }
 
     // use fence to allow host to wait for completion of execution of previous commandBuffer
-    vkResult = vkWaitForFences(vkDevice, 
+    vkResult = vkWaitForFences(vkDevice,
                                1,           // number of fences to wait
                                &vkFence_array[currentImageIndex],
                                VK_TRUE,     // if true wait for all fences to get signaled, if false wait for one fence to get signaled
@@ -1005,7 +1005,7 @@ VkResult display(void)
     }
 
     // make fences ready the next command buffer
-    vkResult = vkResetFences(vkDevice, 
+    vkResult = vkResetFences(vkDevice,
                             1, // number of fences
                             &vkFence_array[currentImageIndex]);
     if(vkResult != VK_SUCCESS)
@@ -1165,7 +1165,7 @@ void uninitialize(void)
     }
 
     // destroy descriptor pool
-    // when we destory descriptor pool it will destroy vkDesriptor Set also 
+    // when we destory descriptor pool it will destroy vkDesriptor Set also
     if(vkDescriptorPool)
     {
         vkDestroyDescriptorPool(vkDevice, vkDescriptorPool, NULL);
@@ -1362,7 +1362,7 @@ VkResult createVulkanInstance(void)
     }
 
     if(bValidation == TRUE)
-    {    
+    {
         //  fill and initalize required validation layer names and count global variables.
         vkResult = fillValidationLayerNames();
         if (vkResult != VK_SUCCESS)
@@ -1406,7 +1406,7 @@ VkResult createVulkanInstance(void)
     else
     {
         vkInstanceCreateInfo.enabledLayerCount = 0;
-        vkInstanceCreateInfo.ppEnabledLayerNames = NULL; 
+        vkInstanceCreateInfo.ppEnabledLayerNames = NULL;
     }
 
     // 4. call vkCreateInstance() to get VkInstance in a global variable and do error checking.
@@ -1648,8 +1648,8 @@ VkResult fillValidationLayerNames(void)
 
     if(vkLayerProperties_array == NULL)
     {
-        fprintf(gpFile, "%s()-> malloc() failed for vkLayerProperties_array !!!\n\n", __func__);        
-		return(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+        fprintf(gpFile, "%s()-> malloc() failed for vkLayerProperties_array !!!\n\n", __func__);
+        return(VK_ERROR_OUT_OF_DEVICE_MEMORY);
     }
     else
     {
@@ -1672,8 +1672,8 @@ VkResult fillValidationLayerNames(void)
 
     if(validationLayerNames_array == NULL)
     {
-        fprintf(gpFile, "%s()-> malloc() failed for validationLayerNames_array !!!\n\n", __func__);        
-		return(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+        fprintf(gpFile, "%s()-> malloc() failed for validationLayerNames_array !!!\n\n", __func__);
+        return(VK_ERROR_OUT_OF_DEVICE_MEMORY);
     }
     else
     {
@@ -1695,7 +1695,7 @@ VkResult fillValidationLayerNames(void)
         vkLayerProperties_array = NULL;
     }
 
-    // // for required validation layer 
+    // // for required validation layer
     VkBool32 validationLayerFound = VK_FALSE;
 
     for(uint32_t i = 0; i < validationLayerCount; i++)
@@ -1719,7 +1719,7 @@ VkResult fillValidationLayerNames(void)
     if(validationLayerNames_array)
     {
        free(validationLayerNames_array);
-       validationLayerNames_array = NULL; 
+       validationLayerNames_array = NULL;
     }
 
     if(bValidation == TRUE)
@@ -1752,7 +1752,7 @@ VkResult createValidationCallbackFunction(void)
 
     // variable declarations
     VkResult vkResult = VK_SUCCESS;
-    PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT_fnptr = NULL; 
+    PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT_fnptr = NULL;
     // code
     fprintf(gpFile, "\n======================== STEPS FOR CREATE VALIDATION CALLBACK FUNCTION START ================================\n\n");
 
@@ -2724,15 +2724,11 @@ VkResult createVertexBuffer(void)
     // local variable declarations
     VkResult vkResult = VK_SUCCESS;
     
-    float rectangle_position[] = 
+    float triangle_position[] =
     {
-        1.0f, 1.0f, 0.0f, // right top
-        -1.0f, 1.0f, 0.0f, // left top
-        -1.0f, -1.0f, 0.0f, // left bottom
-        // left bottom
-        -1.0f, -1.0f, 0.0f // left bottom
-        1.0f, -1.0f, 0.0f, // right bottom
-        1.0f, 1.0f, 0.0f // right top
+        0.0f, 1.0f, 0.0f,
+        -1.0f, -1.0f, 0.0f,
+        1.0f, -1.0f, 0.0f
     };
 
     // code
@@ -2748,7 +2744,7 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.pNext = NULL;
     vkBufferCreateInfo.flags = 0; // flags are used for scatterd / sparce buffer
-    vkBufferCreateInfo.size = sizeof(rectangle_position);
+    vkBufferCreateInfo.size = sizeof(triangle_position);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
     // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
@@ -2828,7 +2824,7 @@ VkResult createVertexBuffer(void)
     }
 
     // actual memeory mapped io
-    memcpy(data, rectangle_position, sizeof(rectangle_position));
+    memcpy(data, triangle_position, sizeof(triangle_position));
 
     vkUnmapMemory(vkDevice, vertexData_position.vkDeviceMemory);
 
@@ -3045,7 +3041,7 @@ VkResult createShaders(void)
     vkShaderModuleCreateInfo.codeSize = size;
     vkShaderModuleCreateInfo.pCode = (uint32_t *)shaderData;
 
-    // call vkCreateShaderModule() vulkan api, pass above struct pointer to it as parameter and obtain shader module object in global variable 
+    // call vkCreateShaderModule() vulkan api, pass above struct pointer to it as parameter and obtain shader module object in global variable
     vkResult = vkCreateShaderModule(vkDevice, &vkShaderModuleCreateInfo, NULL, &vkShaderModule_vertex_shader);
 
     if (vkResult != VK_SUCCESS)
@@ -3131,7 +3127,7 @@ VkResult createShaders(void)
     vkShaderModuleCreateInfo.codeSize = size;
     vkShaderModuleCreateInfo.pCode = (uint32_t *)shaderData;
 
-    // call vkCreateShaderModule() vulkan api, pass above struct pointer to it as parameter and obtain shader module object in global variable 
+    // call vkCreateShaderModule() vulkan api, pass above struct pointer to it as parameter and obtain shader module object in global variable
     vkResult = vkCreateShaderModule(vkDevice, &vkShaderModuleCreateInfo, NULL, &vkShaderModule_fragment_shader);
 
     if (vkResult != VK_SUCCESS)
@@ -3785,7 +3781,7 @@ VkResult buildCommandBuffers(void)
 
         fprintf(gpFile,"\n\n");
 
-        // 
+        //
         VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
         memset((void *)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
 
@@ -3844,8 +3840,8 @@ VkResult buildCommandBuffers(void)
         vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position.vkBuffer, vkDeviceSize_offset_array);
 
         // here we should call vulkan drawing functions
-        vkCmdDraw(vkCommandBuffer_array[i], 
-            6, // no of vertices
+        vkCmdDraw(vkCommandBuffer_array[i],
+            3, // no of vertices
             1, // no of instance
             0, // first vertex
             0 // first instace
@@ -3878,8 +3874,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT vkDebug
     uint64_t object,
     size_t location,
     int32_t messageCode,
-    const char *pLayerPrefix, 
-    const char *pMessage, 
+    const char *pLayerPrefix,
+    const char *pMessage,
     void *pUserData)
 {
     // code
