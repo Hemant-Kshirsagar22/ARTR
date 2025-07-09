@@ -2770,7 +2770,7 @@ VkResult createVertexBuffer(void)
         -1.0f, 1.0f, 0.0f, // left top
         -1.0f, -1.0f, 0.0f, // left bottom
         // left bottom
-        -1.0f, -1.0f, 0.0f // left bottom
+        -1.0f, -1.0f, 0.0f, // left bottom
         1.0f, -1.0f, 0.0f, // right bottom
         1.0f, 1.0f, 0.0f // right top
     };
@@ -2979,7 +2979,7 @@ VkResult createUniformBuffer(void)
     VkResult vkResult = VK_SUCCESS;
 
     // memset our global vertexData_position_triangle struct.
-    memset((void *)&uniformData, 0, sizeof(UniformData));
+    memset((void *)&uniformData_triangle, 0, sizeof(UniformData));
 
     //  declare and memset struct VkBufferCreateInfo
     VkBufferCreateInfo vkBufferCreateInfo;
@@ -2992,25 +2992,23 @@ VkResult createUniformBuffer(void)
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     
     // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
-    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &uniformData.vkBuffer);
+
+    // ---------------------------- tritangle ----------------------
+
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &uniformData_triangle.vkBuffer);
 
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s()-> vkCreateBuffer() failed !!!\n\n", __func__);
+        fprintf(gpFile, "%s()-> vkCreateBuffer() failed triangle !!!\n\n", __func__);
         return (vkResult);
     }
     else
     {
-        fprintf(gpFile, "%s()-> vkCreateBuffer() call success\n\n", __func__);
+        fprintf(gpFile, "%s()-> vkCreateBuffer() call success triangle\n\n", __func__);
     }
-
-    // ---------------------------- tritangle ----------------------
 
     VkMemoryRequirements vkMemoryRequirements;
     memset((void *)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
-
-    // memset our global vertexData_position_triangle struct.
-    memset((void *)&uniformData_triangle, 0, sizeof(UniformData));
 
     vkGetBufferMemoryRequirements(vkDevice, uniformData_triangle.vkBuffer, &vkMemoryRequirements);
 
@@ -3061,10 +3059,24 @@ VkResult createUniformBuffer(void)
     }
 
     // ---------------------------- Rectangle ----------------------
-
-    memset((void *)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
+    
     // memset our global vertexData_position_triangle struct.
     memset((void *)&uniformData_rectangle, 0, sizeof(UniformData));
+    
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &uniformData_rectangle.vkBuffer);
+
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> vkCreateBuffer() failed rectangle !!!\n\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> vkCreateBuffer() call success rectangle\n\n", __func__);
+    }
+
+
+    memset((void *)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
 
     vkGetBufferMemoryRequirements(vkDevice, uniformData_rectangle.vkBuffer, &vkMemoryRequirements);
 
@@ -3174,7 +3186,7 @@ VkResult updateUniformBuffer(void)
     myUniformData.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, -6.0f));
     myUniformData.viewMatrix  = glm::mat4(1.0f);
 
-    glm::mat4 perspectivePojectionMatrix = glm::mat4(1.0f);
+    perspectivePojectionMatrix = glm::mat4(1.0f);
     
     perspectivePojectionMatrix = glm::perspective(glm::radians(45.0f), (float)winWidth / (float)winHeight, 0.1f, 100.0f);
     perspectivePojectionMatrix[1][1] = perspectivePojectionMatrix[1][1] * (-1.0f);
@@ -3482,7 +3494,7 @@ VkResult createDescriptorPool(void)
     vkDescriptorPoolCreateInfo.flags = 0;
     vkDescriptorPoolCreateInfo.poolSizeCount = 1;
     vkDescriptorPoolCreateInfo.pPoolSizes = &vkDescriptorPoolSize;
-    vkDescriptorPoolCreateInfo.maxSets = 1;
+    vkDescriptorPoolCreateInfo.maxSets = 2;
 
     vkResult = vkCreateDescriptorPool(vkDevice, &vkDescriptorPoolCreateInfo, NULL, &vkDescriptorPool);
 
@@ -4099,8 +4111,6 @@ VkResult buildCommandBuffers(void)
         // bind our descriptor set to pipeline
         vkCmdBindDescriptorSets(vkCommandBuffer_array[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &vkDescriptorSet_triangle, 0, NULL);
 
-        vkCmdBindDescriptorSets(vkCommandBuffer_array[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &vkDescriptorSet_rectangle, 0, NULL);
-
         // bind with the pipeline
         vkCmdBindPipeline(vkCommandBuffer_array[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
 
@@ -4120,6 +4130,8 @@ VkResult buildCommandBuffers(void)
         );
 
         // ----------------------------- rectangle --------------------------
+        vkCmdBindDescriptorSets(vkCommandBuffer_array[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipelineLayout, 0, 1, &vkDescriptorSet_rectangle, 0, NULL);
+
         // bind with the vertex buffer
         memset((void *)vkDeviceSize_offset_array, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_array));
 
