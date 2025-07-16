@@ -1240,11 +1240,11 @@ void uninitialize(void)
     }
 
     // free vkDevice memory
-    if(vertexData_color.vkDeviceMemory)
+    if(vertexData_position.vkDeviceMemory)
     {
-        vkFreeMemory(vkDevice, vertexData_color.vkDeviceMemory, NULL);
-        vertexData_color.vkDeviceMemory = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s()-> vertexData_color.vkDeviceMemory is freed\n", __func__);
+        vkFreeMemory(vkDevice, vertexData_position.vkDeviceMemory, NULL);
+        vertexData_position.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position.vkDeviceMemory is freed\n", __func__);
     }
 
     if(vertexData_position.vkBuffer)
