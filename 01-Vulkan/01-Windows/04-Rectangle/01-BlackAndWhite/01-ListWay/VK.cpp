@@ -2732,7 +2732,7 @@ VkResult createVertexBuffer(void)
         -1.0f, -1.0f, 0.0f, // left bottom
         
         // second triangle
-        -1.0f, -1.0f, 0.0f // left bottom
+        -1.0f, -1.0f, 0.0f, // left bottom
         1.0f, -1.0f, 0.0f, // right bottom
         1.0f, 1.0f, 0.0f // right top
     };
