@@ -83,6 +83,7 @@ int winHeight = WIN_HEIGHT;
 VkSwapchainKHR vkSwapchainKHR = VK_NULL_HANDLE;
 VkExtent2D vkExtent2D_swapchain;
 
+// for color images
 // swapchain images and view related global variables
 uint32_t swapchainImageCount = UINT32_MAX;
 VkImage *swapchainImage_array = NULL;
@@ -176,7 +177,7 @@ VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
 
 // for rotation
-float angle_triangle = 0.0f;
+float angle_pyramid = 0.0f;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
@@ -745,11 +746,9 @@ VkResult initialize(void)
     vkClearColorValue.float32[2] = 0.0f;
     vkClearColorValue.float32[3] = 1.0f; // analogous to glClearColor
 
-    // initialize clearDepthStencilValue
     memset((void *)&vkClearDepthStencilValue, 0, sizeof(VkClearDepthStencilValue));
     vkClearDepthStencilValue.depth = 1.0f; // set default clear depth
     vkClearDepthStencilValue.stencil = 0;  // set default stencil value
-
     // build command buffer
     vkResult = buildCommandBuffers();
     if (vkResult != VK_SUCCESS)
@@ -1115,11 +1114,11 @@ VkResult display(void)
 void update(void)
 {
     // code
-    angle_triangle = angle_triangle + 1.0f;
+    angle_pyramid = angle_pyramid + 1.0f;
 
-    if (angle_triangle >= 360.0f)
+    if (angle_pyramid >= 360.0f)
     {
-        angle_triangle = angle_triangle - 360.0f;
+        angle_pyramid = angle_pyramid - 360.0f;
     }
 }
 
@@ -1316,6 +1315,8 @@ void uninitialize(void)
         fprintf(gpFile, "%s()-> vkCommandPool is done\n", __func__);
     }
 
+    // no need to destroy or uninitialize device queue
+    
     // for depth
     if (vkImageView_depth)
     {
@@ -1324,7 +1325,7 @@ void uninitialize(void)
         fprintf(gpFile, "%s()-> vkImageView_depth is free\n", __func__);
     }
 
-    if(vkDeviceMemory_depth)
+    if (vkDeviceMemory_depth)
     {
         vkFreeMemory(vkDevice, vkDeviceMemory_depth, NULL);
         vkDeviceMemory_depth = VK_NULL_HANDLE;
@@ -1337,8 +1338,6 @@ void uninitialize(void)
         vkImage_depth = VK_NULL_HANDLE;
         fprintf(gpFile, "%s()-> vkImage_depth is freed\n", __func__);
     }
-
-    // no need to destroy or uninitialize device queue
 
     // destroy image view
     for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -2722,6 +2721,19 @@ VkResult createImagesAndImageView(void)
         }
     }
 
+    // for depth image
+    vkResult = getSupportedDepthFormat();
+
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> getSupportedDepthFormat() failed  (ERROR CODE : %d )!!!\n\n", __func__, vkResult);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> getSupportedDepthFormat() call success\n\n", __func__);
+    }
+
     // --------------------------------------------------------------------------------
     // for depth image initialize VkImageCreateInfo
     VkImageCreateInfo vkImageCreateInfo;
@@ -2829,6 +2841,7 @@ VkResult createImagesAndImageView(void)
     {
         fprintf(gpFile, "%s()-> vkCreateImageView() call success for depth\n\n", __func__);
     }
+
 
     fprintf(gpFile, "\n======================== CREATE IMAGES AND IMAGE VIEW END ================================\n\n");
     return (vkResult);
@@ -2948,18 +2961,50 @@ VkResult createVertexBuffer(void)
     // local variable declarations
     VkResult vkResult = VK_SUCCESS;
     
-    float triangle_position[] = 
+    float pyramid_position[] = 
     {
-        0.0f, 1.0f, 0.0f,
-        -1.0f, -1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f
+        // front
+        0.0f,  1.0f,  0.0f, // front-top
+       -1.0f, -1.0f,  1.0f, // front-left
+        1.0f, -1.0f,  1.0f, // front-right
+
+        // right
+        0.0f,  1.0f,  0.0f, // right-top
+        1.0f, -1.0f,  1.0f, // right-left
+        1.0f, -1.0f, -1.0f, // right-right
+
+        // back
+        0.0f,  1.0f,  0.0f, // back-top
+        1.0f, -1.0f, -1.0f, // back-left
+       -1.0f, -1.0f, -1.0f, // back-right
+
+        // left
+        0.0f,  1.0f,  0.0f, // left-top
+       -1.0f, -1.0f, -1.0f, // left-left
+       -1.0f, -1.0f,  1.0f, // left-right
     };
 
-    float triangle_color[] = 
+    float pyramid_color[] = 
     {
-        1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 1.0f
+        // front
+        1.0f, 0.0f, 0.0f, // front-top
+        0.0f, 1.0f, 0.0f, // front-left
+        0.0f, 0.0f, 1.0f, // front-right
+
+        // right
+        1.0f, 0.0f, 0.0f, // right-top
+        0.0f, 0.0f, 1.0f, // right-left
+        0.0f, 1.0f, 0.0f, // right-right
+
+        // back
+        1.0f, 0.0f, 0.0f, // back-top
+        0.0f, 1.0f, 0.0f, // back-left
+        0.0f, 0.0f, 1.0f, // back-right
+
+        // left
+        1.0f, 0.0f, 0.0f, // left-top
+        0.0f, 0.0f, 1.0f, // left-left
+        0.0f, 1.0f, 0.0f, // left-right
     };
 
     // code
@@ -2976,7 +3021,7 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.pNext = NULL;
     vkBufferCreateInfo.flags = 0; // flags are used for scatterd / sparce buffer
-    vkBufferCreateInfo.size = sizeof(triangle_position);
+    vkBufferCreateInfo.size = sizeof(pyramid_position);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
     // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
@@ -3056,7 +3101,7 @@ VkResult createVertexBuffer(void)
     }
 
     // actual memeory mapped io
-    memcpy(data, triangle_position, sizeof(triangle_position));
+    memcpy(data, pyramid_position, sizeof(pyramid_position));
 
     vkUnmapMemory(vkDevice, vertexData_position.vkDeviceMemory);
 
@@ -3071,7 +3116,7 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.pNext = NULL;
     vkBufferCreateInfo.flags = 0; // flags are used for scatterd / sparce buffer
-    vkBufferCreateInfo.size = sizeof(triangle_color);
+    vkBufferCreateInfo.size = sizeof(pyramid_color);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
     // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
@@ -3149,7 +3194,7 @@ VkResult createVertexBuffer(void)
     }
 
     // actual memeory mapped io
-    memcpy(data, triangle_color, sizeof(triangle_color));
+    memcpy(data, pyramid_color, sizeof(pyramid_color));
 
     vkUnmapMemory(vkDevice, vertexData_color.vkDeviceMemory);
 
@@ -3270,8 +3315,8 @@ VkResult updateUniformBuffer(void)
     glm::mat4 translationMatrix = glm::mat4(1.0f);
     glm::mat4 rotationMatrix = glm::mat4(1.0f);
 
-    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -4.0f));
-    rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle_triangle), glm::vec3(0.0f, 1.0f, 0.0f));
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+    rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle_pyramid), glm::vec3(0.0f, 1.0f, 0.0f));
 
     myUniformData.modelMatrix = translationMatrix * rotationMatrix;
 
@@ -3673,7 +3718,7 @@ VkResult createRenderPass(void)
 
     memset((void *)vkAttachmentDescription_array, 0, sizeof(VkAttachmentDescription) * _ARRAYSIZE(vkAttachmentDescription_array));
 
-     // for color
+    // for color
     vkAttachmentDescription_array[0].flags = 0;
     vkAttachmentDescription_array[0].format = vkFormat_color;
     vkAttachmentDescription_array[0].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -3695,7 +3740,7 @@ VkResult createRenderPass(void)
     vkAttachmentDescription_array[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     vkAttachmentDescription_array[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-     // declare and initialize VkAttachmentReference structure
+    // declare and initialize VkAttachmentReference structure
     // for color attachment
     VkAttachmentReference vkAttachmentReference_color;
     memset((void *)&vkAttachmentReference_color, 0, sizeof(VkAttachmentReference));
@@ -3710,6 +3755,7 @@ VkResult createRenderPass(void)
     vkAttachmentReference_depth.attachment = 1; // above attachment index number
     vkAttachmentReference_depth.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+
     //  Declare and initialize VkSubpassDescription structure
     VkSubpassDescription vkSubpassDescription;
     memset((void *)&vkSubpassDescription, 0, sizeof(VkSubpassDescription));
@@ -3718,7 +3764,7 @@ VkResult createRenderPass(void)
     vkSubpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     vkSubpassDescription.inputAttachmentCount = 0;
     vkSubpassDescription.pInputAttachments = NULL;
-    vkSubpassDescription.colorAttachmentCount = 1; // this count should be count of vkAttachmentReference used for color
+    vkSubpassDescription.colorAttachmentCount = 1;
     vkSubpassDescription.pColorAttachments = &vkAttachmentReference_color;
     vkSubpassDescription.pResolveAttachments = NULL;
     vkSubpassDescription.pDepthStencilAttachment = &vkAttachmentReference_depth;
@@ -3871,7 +3917,7 @@ VkResult createPipeline(void)
     vkPipelineViewportStateCreateInfo.pScissors = &vkRect2D_scissor;
 
     // depth Stencil state
-     VkPipelineDepthStencilStateCreateInfo vkPipelineDepthStencilStateCreateInfo;
+    VkPipelineDepthStencilStateCreateInfo vkPipelineDepthStencilStateCreateInfo;
     memset((void *)&vkPipelineDepthStencilStateCreateInfo, 0, sizeof(VkPipelineDepthStencilStateCreateInfo));
 
     vkPipelineDepthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -3967,7 +4013,7 @@ VkResult createPipeline(void)
     vkGraphicsPipelineCreateInfo.subpass = 0;
     vkGraphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
     vkGraphicsPipelineCreateInfo.basePipelineIndex = 0;
-    vkGraphicsPipelineCreateInfo.pDepthStencilState = &vkPipelineDepthStencilStateCreateInfo; // for depth
+    vkGraphicsPipelineCreateInfo.pDepthStencilState = &vkPipelineDepthStencilStateCreateInfo;
     
     // create the pipeline
     vkResult = vkCreateGraphicsPipelines(vkDevice, vkPipelineCache, 1, &vkGraphicsPipelineCreateInfo, NULL, &vkPipeline);
@@ -4008,7 +4054,7 @@ VkResult createFrameBuffers(void)
     //  Allocate the framebuffer array by malloc equal to the sizeof swapchain image count.
     vkFramebuffer_array = (VkFramebuffer *)malloc(sizeof(VkFramebuffer) * swapchainImageCount);
 
-    for(uint32_t i = 0; i < swapchainImageCount; i++)
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
     {
         VkImageView vkImageView_attachments_array[2]; // for color and depth
         memset((void *)vkImageView_attachments_array, 0, sizeof(VkImageView) * _ARRAYSIZE(vkImageView_attachments_array));
@@ -4025,13 +4071,13 @@ VkResult createFrameBuffers(void)
         vkFramebufferCreateInfo.width = vkExtent2D_swapchain.width;
         vkFramebufferCreateInfo.height = vkExtent2D_swapchain.height;
         vkFramebufferCreateInfo.layers = 1;
-        
+
         vkImageView_attachments_array[0] = swapchainImageView_array[i];
         vkImageView_attachments_array[1] = vkImageView_depth;
 
         vkResult = vkCreateFramebuffer(vkDevice, &vkFramebufferCreateInfo, NULL, &vkFramebuffer_array[i]);
 
-        if(vkResult != VK_SUCCESS)
+        if (vkResult != VK_SUCCESS)
         {
             fprintf(gpFile, "%s()-> vkCreateFramebuffer() failed for i = %d (ERROR CODE : %d)\n\n", __func__, i, vkResult);
             return(vkResult);
@@ -4043,7 +4089,7 @@ VkResult createFrameBuffers(void)
     }
 
     fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS END ================================\n\n");
-    
+
     return(vkResult);
 }
 
@@ -4228,12 +4274,12 @@ VkResult buildCommandBuffers(void)
 
         // here we should call vulkan drawing functions
         vkCmdDraw(vkCommandBuffer_array[i], 
-            3, // no of vertices
+            12, // no of vertices
             1, // no of instance
             0, // first vertex
             0 // first instace
         );
-
+        
         // end render pass
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);
 
