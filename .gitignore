@@ -4,5 +4,6 @@
 *.res
 *.exe
 
-*.txt
+LOG.txt
+glm/
 
