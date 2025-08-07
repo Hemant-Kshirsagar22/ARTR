@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h" // header file for texture
 #include "VK.h"
 
 // vulkan related header file
@@ -128,7 +130,7 @@ VkDebugReportCallbackEXT vkDebugReportCallbackEXT = VK_NULL_HANDLE;
 PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT_fnptr = NULL;
 
 // vertex buffer related variable
-typedef struct
+typedef struct 
 {
     VkBuffer vkBuffer;
     VkDeviceMemory vkDeviceMemory;
@@ -136,6 +138,8 @@ typedef struct
 
 // position
 VertexData vertexData_position;
+
+VertexData vertexData_texcoord;
 
 // uniform related declarations
 struct MyUniformData
@@ -169,10 +173,13 @@ VkDescriptorPool vkDescriptorPool = VK_NULL_HANDLE;
 //descriptor set
 VkDescriptorSet vkDescriptorSet = VK_NULL_HANDLE;
 
-// for pipeline
+// for pipeline 
 VkViewport vkViewport;
 VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
+
+// for rotation
+float angle_pyramid = 0.0f;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
@@ -591,7 +598,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createVertexBuffer() success\n\n", __func__);
     }
 
-    // create
+    // create 
     vkResult = createUniformBuffer();
     if (vkResult != VK_SUCCESS)
     {
@@ -738,13 +745,12 @@ VkResult initialize(void)
     memset((void *)&vkClearColorValue, 0, sizeof(VkClearColorValue));
     vkClearColorValue.float32[0] = 0.0f;
     vkClearColorValue.float32[1] = 0.0f;
-    vkClearColorValue.float32[2] = 1.0f;
+    vkClearColorValue.float32[2] = 0.0f;
     vkClearColorValue.float32[3] = 1.0f; // analogous to glClearColor
 
     memset((void *)&vkClearDepthStencilValue, 0, sizeof(VkClearDepthStencilValue));
     vkClearDepthStencilValue.depth = 1.0f; // set default clear depth
     vkClearDepthStencilValue.stencil = 0;  // set default stencil value
-
     // build command buffer
     vkResult = buildCommandBuffers();
     if (vkResult != VK_SUCCESS)
@@ -1003,9 +1009,9 @@ VkResult display(void)
     }
 
     // aquaire index of next swapchain image
-    vkResult = vkAcquireNextImageKHR(vkDevice,
+    vkResult = vkAcquireNextImageKHR(vkDevice, 
                                     vkSwapchainKHR,
-                                    UINT64_MAX, // time in nano sec, here we are waiting for swapchain next Image, if we don't get image within timout return VK_NOT_READY
+                                    UINT64_MAX, // time in nano sec, here we are waiting for swapchain next Image, if we don't get image within timout return VK_NOT_READY 
                                     vkSemaphore_backBuffer, // waiting for previous operation to release swapchain image.
                                     VK_NULL_HANDLE,
                                     &currentImageIndex);
@@ -1023,7 +1029,7 @@ VkResult display(void)
     }
 
     // use fence to allow host to wait for completion of execution of previous commandBuffer
-    vkResult = vkWaitForFences(vkDevice,
+    vkResult = vkWaitForFences(vkDevice, 
                                1,           // number of fences to wait
                                &vkFence_array[currentImageIndex],
                                VK_TRUE,     // if true wait for all fences to get signaled, if false wait for one fence to get signaled
@@ -1036,7 +1042,7 @@ VkResult display(void)
     }
 
     // make fences ready the next command buffer
-    vkResult = vkResetFences(vkDevice,
+    vkResult = vkResetFences(vkDevice, 
                             1, // number of fences
                             &vkFence_array[currentImageIndex]);
     if(vkResult != VK_SUCCESS)
@@ -1110,6 +1116,12 @@ VkResult display(void)
 void update(void)
 {
     // code
+    angle_pyramid = angle_pyramid + 1.0f;
+
+    if (angle_pyramid >= 360.0f)
+    {
+        angle_pyramid = angle_pyramid - 360.0f;
+    }
 }
 
 void uninitialize(void)
@@ -1196,7 +1208,7 @@ void uninitialize(void)
     }
 
     // destroy descriptor pool
-    // when we destory descriptor pool it will destroy vkDesriptor Set also
+    // when we destory descriptor pool it will destroy vkDesriptor Set also 
     if(vkDescriptorPool)
     {
         vkDestroyDescriptorPool(vkDevice, vkDescriptorPool, NULL);
@@ -1253,6 +1265,21 @@ void uninitialize(void)
         fprintf(gpFile, "%s()-> uniformData.vkBuffer is freed\n", __func__);
     }
 
+    // free vertexData_texcoord
+    if(vertexData_texcoord.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_texcoord.vkDeviceMemory, NULL);
+        vertexData_texcoord.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_texcoord.vkDeviceMemory is freed\n", __func__);
+    }
+
+    if(vertexData_texcoord.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_texcoord.vkBuffer, NULL);
+        vertexData_texcoord.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_texcoord.vkBuffer is freed\n", __func__);
+    }
+
     // free vkDevice memory
     if(vertexData_position.vkDeviceMemory)
     {
@@ -1290,6 +1317,8 @@ void uninitialize(void)
         fprintf(gpFile, "%s()-> vkCommandPool is done\n", __func__);
     }
 
+    // no need to destroy or uninitialize device queue
+    
     // for depth
     if (vkImageView_depth)
     {
@@ -1298,7 +1327,7 @@ void uninitialize(void)
         fprintf(gpFile, "%s()-> vkImageView_depth is free\n", __func__);
     }
 
-    if(vkDeviceMemory_depth)
+    if (vkDeviceMemory_depth)
     {
         vkFreeMemory(vkDevice, vkDeviceMemory_depth, NULL);
         vkDeviceMemory_depth = VK_NULL_HANDLE;
@@ -1311,8 +1340,6 @@ void uninitialize(void)
         vkImage_depth = VK_NULL_HANDLE;
         fprintf(gpFile, "%s()-> vkImage_depth is freed\n", __func__);
     }
-
-    // no need to destroy or uninitialize device queue
 
     // destroy image view
     for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -1415,7 +1442,7 @@ VkResult createVulkanInstance(void)
     }
 
     if(bValidation == TRUE)
-    {
+    {    
         //  fill and initalize required validation layer names and count global variables.
         vkResult = fillValidationLayerNames();
         if (vkResult != VK_SUCCESS)
@@ -1459,7 +1486,7 @@ VkResult createVulkanInstance(void)
     else
     {
         vkInstanceCreateInfo.enabledLayerCount = 0;
-        vkInstanceCreateInfo.ppEnabledLayerNames = NULL;
+        vkInstanceCreateInfo.ppEnabledLayerNames = NULL; 
     }
 
     // 4. call vkCreateInstance() to get VkInstance in a global variable and do error checking.
@@ -1701,8 +1728,8 @@ VkResult fillValidationLayerNames(void)
 
     if(vkLayerProperties_array == NULL)
     {
-        fprintf(gpFile, "%s()-> malloc() failed for vkLayerProperties_array !!!\n\n", __func__);
-        return(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+        fprintf(gpFile, "%s()-> malloc() failed for vkLayerProperties_array !!!\n\n", __func__);        
+		return(VK_ERROR_OUT_OF_DEVICE_MEMORY);
     }
     else
     {
@@ -1725,8 +1752,8 @@ VkResult fillValidationLayerNames(void)
 
     if(validationLayerNames_array == NULL)
     {
-        fprintf(gpFile, "%s()-> malloc() failed for validationLayerNames_array !!!\n\n", __func__);
-        return(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+        fprintf(gpFile, "%s()-> malloc() failed for validationLayerNames_array !!!\n\n", __func__);        
+		return(VK_ERROR_OUT_OF_DEVICE_MEMORY);
     }
     else
     {
@@ -1748,7 +1775,7 @@ VkResult fillValidationLayerNames(void)
         vkLayerProperties_array = NULL;
     }
 
-    // // for required validation layer
+    // // for required validation layer 
     VkBool32 validationLayerFound = VK_FALSE;
 
     for(uint32_t i = 0; i < validationLayerCount; i++)
@@ -1772,7 +1799,7 @@ VkResult fillValidationLayerNames(void)
     if(validationLayerNames_array)
     {
        free(validationLayerNames_array);
-       validationLayerNames_array = NULL;
+       validationLayerNames_array = NULL; 
     }
 
     if(bValidation == TRUE)
@@ -1805,7 +1832,7 @@ VkResult createValidationCallbackFunction(void)
 
     // variable declarations
     VkResult vkResult = VK_SUCCESS;
-    PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT_fnptr = NULL;
+    PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT_fnptr = NULL; 
     // code
     fprintf(gpFile, "\n======================== STEPS FOR CREATE VALIDATION CALLBACK FUNCTION START ================================\n\n");
 
@@ -2817,6 +2844,7 @@ VkResult createImagesAndImageView(void)
         fprintf(gpFile, "%s()-> vkCreateImageView() call success for depth\n\n", __func__);
     }
 
+
     fprintf(gpFile, "\n======================== CREATE IMAGES AND IMAGE VIEW END ================================\n\n");
     return (vkResult);
 }
@@ -2931,18 +2959,59 @@ VkResult createCommandBuffer(void)
 
 VkResult createVertexBuffer(void)
 {
+    fprintf(gpFile, "\n======================== CREATE VERTEX BUFFER START ================================\n\n");
     // local variable declarations
     VkResult vkResult = VK_SUCCESS;
     
-    float triangle_position[] =
+    float pyramid_position[] = 
     {
-        0.0f, 1.0f, 0.0f,
-        -1.0f, -1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f
+        // front
+        0.0f,  1.0f,  0.0f, // front-top
+       -1.0f, -1.0f,  1.0f, // front-left
+        1.0f, -1.0f,  1.0f, // front-right
+
+        // right
+        0.0f,  1.0f,  0.0f, // right-top
+        1.0f, -1.0f,  1.0f, // right-left
+        1.0f, -1.0f, -1.0f, // right-right
+
+        // back
+        0.0f,  1.0f,  0.0f, // back-top
+        1.0f, -1.0f, -1.0f, // back-left
+       -1.0f, -1.0f, -1.0f, // back-right
+
+        // left
+        0.0f,  1.0f,  0.0f, // left-top
+       -1.0f, -1.0f, -1.0f, // left-left
+       -1.0f, -1.0f,  1.0f, // left-right
+    };
+
+    float pyramid_color[] = 
+    {
+        // front
+        0.5, 1.0, // front-top
+        0.0, 0.0, // front-left
+        1.0, 0.0, // front-right
+
+        // right
+        0.5, 1.0, // right-top
+        1.0, 0.0, // right-left
+        0.0, 0.0, // right-right
+
+        // back
+        0.5, 1.0, // back-top
+        0.0, 0.0, // back-left
+        1.0, 0.0, // back-right
+
+        // left
+        0.5, 1.0, // left-top
+        1.0, 0.0, // left-left
+        0.0, 0.0, // left-right
     };
 
     // code
-    fprintf(gpFile, "\n======================== CREATE VERTEX BUFFER START ================================\n\n");
+    
+    // ------- Vertex position buffer
 
     // memset our global vertexData_position struct.
     memset((void *)&vertexData_position, 0, sizeof(VertexData));
@@ -2954,7 +3023,7 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.pNext = NULL;
     vkBufferCreateInfo.flags = 0; // flags are used for scatterd / sparce buffer
-    vkBufferCreateInfo.size = sizeof(triangle_position);
+    vkBufferCreateInfo.size = sizeof(pyramid_position);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
     // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
@@ -3034,9 +3103,102 @@ VkResult createVertexBuffer(void)
     }
 
     // actual memeory mapped io
-    memcpy(data, triangle_position, sizeof(triangle_position));
+    memcpy(data, pyramid_position, sizeof(pyramid_position));
 
     vkUnmapMemory(vkDevice, vertexData_position.vkDeviceMemory);
+
+     // ------- Vertex color buffer
+
+    // memset our global vertexData_texcoord struct.
+    memset((void *)&vertexData_texcoord, 0, sizeof(VertexData));
+
+    //  declare and memset struct VkBufferCreateInfo
+    memset((void *)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
+
+    vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vkBufferCreateInfo.pNext = NULL;
+    vkBufferCreateInfo.flags = 0; // flags are used for scatterd / sparce buffer
+    vkBufferCreateInfo.size = sizeof(pyramid_color);
+    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+    // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_texcoord.vkBuffer);
+
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> vkCreateBuffer() failed for vertexData_texcoord !!!\n\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> vkCreateBuffer() call success for vertexData_texcoord \n\n", __func__);
+    }
+
+    vkMemoryRequirements;
+    memset((void *)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
+
+    vkGetBufferMemoryRequirements(vkDevice, vertexData_texcoord.vkBuffer, &vkMemoryRequirements);
+
+    memset((void *)&vkMemeoryAllocateInfo, 0, sizeof(vkMemeoryAllocateInfo));
+
+    vkMemeoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    vkMemeoryAllocateInfo.allocationSize = vkMemoryRequirements.size;
+
+    vkMemeoryAllocateInfo.memoryTypeIndex = 0; // inital value before entring loop
+
+    for(uint32_t i = 0; i < vkPhysicalDeviceMemoryProperties.memoryTypeCount; i++)
+    {
+        if((vkMemoryRequirements.memoryTypeBits & 1) == 1)
+        {
+            if(vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+            {
+                vkMemeoryAllocateInfo.memoryTypeIndex = i;
+                break;
+            }
+        }
+
+        vkMemoryRequirements.memoryTypeBits >>= 1;
+    }
+
+    vkResult = vkAllocateMemory(vkDevice, &vkMemeoryAllocateInfo, NULL, &vertexData_texcoord.vkDeviceMemory);
+
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> vkAllocateMemory() for vertexData_texcoord.vkDeviceMemory failed !!!\n\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> vkAllocateMemory() call success for vertexData_texcoord.vkDeviceMemory\n\n", __func__);
+    }
+
+    vkResult = vkBindBufferMemory(vkDevice, vertexData_texcoord.vkBuffer, vertexData_texcoord.vkDeviceMemory, 0);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> vkBindBufferMemory() failed for vertexData_texcoord !!!\n\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> vkBindBufferMemory() call success for vertexData_texcoord\n\n", __func__);
+    }
+
+    data = NULL;
+    vkResult = vkMapMemory(vkDevice, vertexData_texcoord.vkDeviceMemory, 0, vkMemeoryAllocateInfo.allocationSize, 0, &data);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> vkMapMemory() failed for vertexData_texcoord !!!\n\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> vkMapMemory() call success for vertexData_texcoord\n\n", __func__);
+    }
+
+    // actual memeory mapped io
+    memcpy(data, pyramid_color, sizeof(pyramid_color));
+
+    vkUnmapMemory(vkDevice, vertexData_texcoord.vkDeviceMemory);
 
     fprintf(gpFile, "\n======================== CREATE VERTEX BUFFER END ================================\n\n");
     return(vkResult);
@@ -3152,7 +3314,14 @@ VkResult updateUniformBuffer(void)
 
     // update matricies
     myUniformData.modelMatrix = glm::mat4(1.0f);
-    myUniformData.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+    glm::mat4 translationMatrix = glm::mat4(1.0f);
+    glm::mat4 rotationMatrix = glm::mat4(1.0f);
+
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+    rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(angle_pyramid), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    myUniformData.modelMatrix = translationMatrix * rotationMatrix;
+
     myUniformData.viewMatrix  = glm::mat4(1.0f);
 
     glm::mat4 perspectivePojectionMatrix = glm::mat4(1.0f);
@@ -3251,7 +3420,7 @@ VkResult createShaders(void)
     vkShaderModuleCreateInfo.codeSize = size;
     vkShaderModuleCreateInfo.pCode = (uint32_t *)shaderData;
 
-    // call vkCreateShaderModule() vulkan api, pass above struct pointer to it as parameter and obtain shader module object in global variable
+    // call vkCreateShaderModule() vulkan api, pass above struct pointer to it as parameter and obtain shader module object in global variable 
     vkResult = vkCreateShaderModule(vkDevice, &vkShaderModuleCreateInfo, NULL, &vkShaderModule_vertex_shader);
 
     if (vkResult != VK_SUCCESS)
@@ -3337,7 +3506,7 @@ VkResult createShaders(void)
     vkShaderModuleCreateInfo.codeSize = size;
     vkShaderModuleCreateInfo.pCode = (uint32_t *)shaderData;
 
-    // call vkCreateShaderModule() vulkan api, pass above struct pointer to it as parameter and obtain shader module object in global variable
+    // call vkCreateShaderModule() vulkan api, pass above struct pointer to it as parameter and obtain shader module object in global variable 
     vkResult = vkCreateShaderModule(vkDevice, &vkShaderModuleCreateInfo, NULL, &vkShaderModule_fragment_shader);
 
     if (vkResult != VK_SUCCESS)
@@ -3547,7 +3716,7 @@ VkResult createRenderPass(void)
     fprintf(gpFile, "\n======================== CREATE RenderPass START ================================\n\n");
 
     // declare and initialize VkAttachmentDescriptor
-    VkAttachmentDescription vkAttachmentDescription_array[2]; // for color and depth
+    VkAttachmentDescription vkAttachmentDescription_array[2];
 
     memset((void *)vkAttachmentDescription_array, 0, sizeof(VkAttachmentDescription) * _ARRAYSIZE(vkAttachmentDescription_array));
 
@@ -3588,6 +3757,7 @@ VkResult createRenderPass(void)
     vkAttachmentReference_depth.attachment = 1; // above attachment index number
     vkAttachmentReference_depth.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+
     //  Declare and initialize VkSubpassDescription structure
     VkSubpassDescription vkSubpassDescription;
     memset((void *)&vkSubpassDescription, 0, sizeof(VkSubpassDescription));
@@ -3596,7 +3766,7 @@ VkResult createRenderPass(void)
     vkSubpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     vkSubpassDescription.inputAttachmentCount = 0;
     vkSubpassDescription.pInputAttachments = NULL;
-    vkSubpassDescription.colorAttachmentCount = 1; // this count should be count of vkAttachmentReference used for color
+    vkSubpassDescription.colorAttachmentCount = 1;
     vkSubpassDescription.pColorAttachments = &vkAttachmentReference_color;
     vkSubpassDescription.pResolveAttachments = NULL;
     vkSubpassDescription.pDepthStencilAttachment = &vkAttachmentReference_depth;
@@ -3643,20 +3813,33 @@ VkResult createPipeline(void)
     fprintf(gpFile, "\n======================== CREATE PIPELINE START ================================\n\n");
 
     // vertex input state
-    VkVertexInputBindingDescription vkVertexInputBindingDescription_array[1];
+    VkVertexInputBindingDescription vkVertexInputBindingDescription_array[2];
     memset((void *)vkVertexInputBindingDescription_array, 0, sizeof(VkVertexInputBindingDescription) * _ARRAYSIZE(vkVertexInputBindingDescription_array));
 
-    vkVertexInputBindingDescription_array[0].binding = 0;
+    // for position
+    vkVertexInputBindingDescription_array[0].binding = 0; // corrospoing to layout = 0 in vertex shader
     vkVertexInputBindingDescription_array[0].stride = sizeof(float) * 3;
     vkVertexInputBindingDescription_array[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    VkVertexInputAttributeDescription vkVertexInputAttributeDescription_array[1];
+    // for texture
+    vkVertexInputBindingDescription_array[1].binding = 1; // corrospoing to layout = 1 in vertex shader
+    vkVertexInputBindingDescription_array[1].stride = sizeof(float) * 2;
+    vkVertexInputBindingDescription_array[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    VkVertexInputAttributeDescription vkVertexInputAttributeDescription_array[2];
     memset((void *)vkVertexInputAttributeDescription_array, 0, sizeof(VkVertexInputAttributeDescription) * _ARRAYSIZE(vkVertexInputAttributeDescription_array));
 
+    // for position
     vkVertexInputAttributeDescription_array[0].binding = 0;
     vkVertexInputAttributeDescription_array[0].location = 0;
     vkVertexInputAttributeDescription_array[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     vkVertexInputAttributeDescription_array[0].offset = 0;
+
+    // for texture
+    vkVertexInputAttributeDescription_array[1].binding = 1;
+    vkVertexInputAttributeDescription_array[1].location = 1;
+    vkVertexInputAttributeDescription_array[1].format = VK_FORMAT_R32G32_SFLOAT;
+    vkVertexInputAttributeDescription_array[1].offset = 0;
 
     VkPipelineVertexInputStateCreateInfo vkPipelineVertexInputStateCreateInfo;
     memset((void *)&vkPipelineVertexInputStateCreateInfo, 0, sizeof(VkPipelineVertexInputStateCreateInfo));
@@ -3686,7 +3869,7 @@ VkResult createPipeline(void)
     vkPipelineRasterizationStateCreateInfo.pNext = NULL;
     vkPipelineRasterizationStateCreateInfo.flags = 0;
     vkPipelineRasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    vkPipelineRasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    vkPipelineRasterizationStateCreateInfo.cullMode = VK_CULL_MODE_NONE;
     vkPipelineRasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     vkPipelineRasterizationStateCreateInfo.lineWidth = 1.0f;
 
@@ -3873,7 +4056,7 @@ VkResult createFrameBuffers(void)
     //  Allocate the framebuffer array by malloc equal to the sizeof swapchain image count.
     vkFramebuffer_array = (VkFramebuffer *)malloc(sizeof(VkFramebuffer) * swapchainImageCount);
 
-    for(uint32_t i = 0; i < swapchainImageCount; i++)
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
     {
         VkImageView vkImageView_attachments_array[2]; // for color and depth
         memset((void *)vkImageView_attachments_array, 0, sizeof(VkImageView) * _ARRAYSIZE(vkImageView_attachments_array));
@@ -3890,13 +4073,13 @@ VkResult createFrameBuffers(void)
         vkFramebufferCreateInfo.width = vkExtent2D_swapchain.width;
         vkFramebufferCreateInfo.height = vkExtent2D_swapchain.height;
         vkFramebufferCreateInfo.layers = 1;
-        
+
         vkImageView_attachments_array[0] = swapchainImageView_array[i];
         vkImageView_attachments_array[1] = vkImageView_depth;
 
         vkResult = vkCreateFramebuffer(vkDevice, &vkFramebufferCreateInfo, NULL, &vkFramebuffer_array[i]);
 
-        if(vkResult != VK_SUCCESS)
+        if (vkResult != VK_SUCCESS)
         {
             fprintf(gpFile, "%s()-> vkCreateFramebuffer() failed for i = %d (ERROR CODE : %d)\n\n", __func__, i, vkResult);
             return(vkResult);
@@ -3908,7 +4091,7 @@ VkResult createFrameBuffers(void)
     }
 
     fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS END ================================\n\n");
-    
+
     return(vkResult);
 }
 
@@ -4025,7 +4208,7 @@ VkResult buildCommandBuffers(void)
 
         fprintf(gpFile,"\n\n");
 
-        //
+        // 
         VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
         memset((void *)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
 
@@ -4079,19 +4262,26 @@ VkResult buildCommandBuffers(void)
         vkCmdBindPipeline(vkCommandBuffer_array[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
 
         // bind with the vertex buffer
-        VkDeviceSize vkDeviceSize_offset_array[1];
-        memset((void *)vkDeviceSize_offset_array, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_array));
+        // for position
+        VkDeviceSize vkDeviceSize_offset_position[1];
+        memset((void *)vkDeviceSize_offset_position, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_position));
 
-        vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position.vkBuffer, vkDeviceSize_offset_array);
+        vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position.vkBuffer, vkDeviceSize_offset_position);
+
+        // for texcoord
+        VkDeviceSize vkDeviceSize_offset_texcoord[1];
+        memset((void *)vkDeviceSize_offset_texcoord, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_texcoord));
+
+        vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 1, 1, &vertexData_texcoord.vkBuffer, vkDeviceSize_offset_texcoord);
 
         // here we should call vulkan drawing functions
-        vkCmdDraw(vkCommandBuffer_array[i],
-            3, // no of vertices
+        vkCmdDraw(vkCommandBuffer_array[i], 
+            12, // no of vertices
             1, // no of instance
             0, // first vertex
             0 // first instace
         );
-
+        
         // end render pass
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);
 
@@ -4119,8 +4309,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT vkDebug
     uint64_t object,
     size_t location,
     int32_t messageCode,
-    const char *pLayerPrefix,
-    const char *pMessage,
+    const char *pLayerPrefix, 
+    const char *pMessage, 
     void *pUserData)
 {
     // code
