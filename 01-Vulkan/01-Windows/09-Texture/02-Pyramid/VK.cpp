@@ -2986,7 +2986,7 @@ VkResult createVertexBuffer(void)
        -1.0f, -1.0f,  1.0f, // left-right
     };
 
-    float pyramid_color[] = 
+    float pyramid_texcoord[] = 
     {
         // front
         0.5, 1.0, // front-top
@@ -3107,7 +3107,7 @@ VkResult createVertexBuffer(void)
 
     vkUnmapMemory(vkDevice, vertexData_position.vkDeviceMemory);
 
-     // ------- Vertex color buffer
+     // ------- Vertex texcoord buffer
 
     // memset our global vertexData_texcoord struct.
     memset((void *)&vertexData_texcoord, 0, sizeof(VertexData));
@@ -3118,7 +3118,7 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.pNext = NULL;
     vkBufferCreateInfo.flags = 0; // flags are used for scatterd / sparce buffer
-    vkBufferCreateInfo.size = sizeof(pyramid_color);
+    vkBufferCreateInfo.size = sizeof(pyramid_texcoord);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
     // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
@@ -3196,7 +3196,7 @@ VkResult createVertexBuffer(void)
     }
 
     // actual memeory mapped io
-    memcpy(data, pyramid_color, sizeof(pyramid_color));
+    memcpy(data, pyramid_texcoord, sizeof(pyramid_texcoord));
 
     vkUnmapMemory(vkDevice, vertexData_texcoord.vkDeviceMemory);
 
