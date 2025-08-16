@@ -2240,7 +2240,7 @@ VkResult createImagesAndImageView(void)
     vkResult = vkGetSwapchainImagesKHR(vkDevice, vkSwapchainKHR, &swapchainImageCount, NULL);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s()-> vkCreateImageView() 1st call failed !!!\n\n", __func__);
+        fprintf(gpFile, "%s()-> vkGetSwapchainImagesKHR() 1st call failed !!!\n\n", __func__);
         return (vkResult);
     }
     else if (swapchainImageCount == 0)
@@ -2250,7 +2250,7 @@ VkResult createImagesAndImageView(void)
     }
     else
     {
-        fprintf(gpFile, "%s()-> vkCreateImageView() 1st call success\n\n", __func__);
+        fprintf(gpFile, "%s()-> vkGetSwapchainImagesKHR() 1st call success\n\n", __func__);
         fprintf(gpFile, "%s()-> swapchainimage count : %d\n\n", __func__, swapchainImageCount);
     }
 
@@ -2261,7 +2261,7 @@ VkResult createImagesAndImageView(void)
     vkResult = vkGetSwapchainImagesKHR(vkDevice, vkSwapchainKHR, &swapchainImageCount, swapchainImage_array);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s()-> vkCreateImageView() 2st call failed !!!\n\n", __func__);
+        fprintf(gpFile, "%s()-> vkGetSwapchainImagesKHR() 2st call failed !!!\n\n", __func__);
         return (vkResult);
     }
     else if (swapchainImageCount == 0)
@@ -2271,7 +2271,7 @@ VkResult createImagesAndImageView(void)
     }
     else
     {
-        fprintf(gpFile, "%s()-> vkCreateImageView() 2st call success\n\n", __func__);
+        fprintf(gpFile, "%s()-> vkGetSwapchainImagesKHR() 2st call success\n\n", __func__);
         fprintf(gpFile, "%s()-> swapchainimage count : %d\n\n", __func__, swapchainImageCount);
     }
 
