@@ -4258,15 +4258,23 @@ VkResult createDescriptorSetLayout(void)
     fprintf(gpFile, "\n======================== CREATE DESRIPTOR SET LAYOUT START ================================\n\n");
 
     // initialize descriptor set binding
-    VkDescriptorSetLayoutBinding vkDescriptorSetLayoutBinding;
+    VkDescriptorSetLayoutBinding vkDescriptorSetLayoutBinding_array[2]; // 0th for mvp unifrom, 1st for texture
     
-    memset((void *)&vkDescriptorSetLayoutBinding, 0, sizeof(VkDescriptorSetLayoutBinding));
+    memset((void *)vkDescriptorSetLayoutBinding_array, 0, sizeof(VkDescriptorSetLayoutBinding) * _ARRAYSIZE(vkDescriptorSetLayoutBinding_array));
+    
+    // for mvp uniform 
+    vkDescriptorSetLayoutBinding_array[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    vkDescriptorSetLayoutBinding_array[0].binding = 0; // this 0 related with the shader binding point in vertex shader
+    vkDescriptorSetLayoutBinding_array[0].descriptorCount = 1;
+    vkDescriptorSetLayoutBinding_array[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    vkDescriptorSetLayoutBinding_array[0].pImmutableSamplers = NULL;
 
-    vkDescriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    vkDescriptorSetLayoutBinding.binding = 0; // this 0 related with the shader binding point in vertex shader
-    vkDescriptorSetLayoutBinding.descriptorCount = 1;
-    vkDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    vkDescriptorSetLayoutBinding.pImmutableSamplers = NULL;
+    // for texture image and sampler
+    vkDescriptorSetLayoutBinding_array[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkDescriptorSetLayoutBinding_array[1].binding = 1;  
+    vkDescriptorSetLayoutBinding_array[1].descriptorCount = 1;
+    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vkDescriptorSetLayoutBinding_array[1].pImmutableSamplers = NULL;
 
     // declare memset and initialize struct VkDecriptorSetLayoutCreateInfo
     VkDescriptorSetLayoutCreateInfo vkDescriptorSetLayoutCreateInfo;
@@ -4275,8 +4283,8 @@ VkResult createDescriptorSetLayout(void)
     vkDescriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     vkDescriptorSetLayoutCreateInfo.pNext = NULL;
     vkDescriptorSetLayoutCreateInfo.flags = 0; // reserved hence 0
-    vkDescriptorSetLayoutCreateInfo.bindingCount = 1;
-    vkDescriptorSetLayoutCreateInfo.pBindings = &vkDescriptorSetLayoutBinding;
+    vkDescriptorSetLayoutCreateInfo.bindingCount = _ARRAYSIZE(vkDescriptorSetLayoutBinding_array);
+    vkDescriptorSetLayoutCreateInfo.pBindings = vkDescriptorSetLayoutBinding_array;
 
     vkResult = vkCreateDescriptorSetLayout(vkDevice, &vkDescriptorSetLayoutCreateInfo, NULL, &vkDescriptorSetLayout);
 
@@ -4334,12 +4342,17 @@ VkResult createDescriptorPool(void)
 
     // code
     // before creating actual descriptor pool vulkan expects descriptor pool size
-    VkDescriptorPoolSize vkDescriptorPoolSize;
-    memset((void *)&vkDescriptorPoolSize, 0, sizeof(VkDescriptorPoolSize));
+    VkDescriptorPoolSize vkDescriptorPoolSize_array[2]; // 0th for MVP vbo and 1st for texture
+    memset((void *)&vkDescriptorPoolSize, 0, sizeof(VkDescriptorPoolSize) * _ARRAYSIZE(vkDescriptorPoolSize_array));
 
-    vkDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    vkDescriptorPoolSize.descriptorCount = 1;
+    // for MVP uniform
+    vkDescriptorPoolSize_array[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    vkDescriptorPoolSize_array[0].descriptorCount = 1;
 
+    // for texture uniform
+    vkDescriptorPoolSize_array[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkDescriptorPoolSize_array[1].descriptorCount = 1;
+    
     // create the pool
     VkDescriptorPoolCreateInfo vkDescriptorPoolCreateInfo;
     memset((void *)&vkDescriptorPoolCreateInfo, 0, sizeof(VkDescriptorPoolCreateInfo));
@@ -4347,9 +4360,9 @@ VkResult createDescriptorPool(void)
     vkDescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     vkDescriptorPoolCreateInfo.pNext = NULL;
     vkDescriptorPoolCreateInfo.flags = 0;
-    vkDescriptorPoolCreateInfo.poolSizeCount = 1;
-    vkDescriptorPoolCreateInfo.pPoolSizes = &vkDescriptorPoolSize;
-    vkDescriptorPoolCreateInfo.maxSets = 1;
+    vkDescriptorPoolCreateInfo.poolSizeCount = _ARRAYSIZE(vkDescriptorPoolSize_array);
+    vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize;
+    vkDescriptorPoolCreateInfo.maxSets = 2;
 
     vkResult = vkCreateDescriptorPool(vkDevice, &vkDescriptorPoolCreateInfo, NULL, &vkDescriptorPool);
 
@@ -4380,7 +4393,7 @@ VkResult createDescriptorSet(void)
     vkDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     vkDescriptorSetAllocateInfo.pNext = NULL;
     vkDescriptorSetAllocateInfo.descriptorPool = vkDescriptorPool;
-    vkDescriptorSetAllocateInfo.descriptorSetCount = 1;
+    vkDescriptorSetAllocateInfo.descriptorSetCount = 1; // though we have 2 descriptors 1 for mvp uniform and 1 for texture sampler, both are in 1 same descriptor set
     vkDescriptorSetAllocateInfo.pSetLayouts = &vkDescriptorSetLayout;
 
     vkResult = vkAllocateDescriptorSets(vkDevice, &vkDescriptorSetAllocateInfo, &vkDescriptorSet);
@@ -4396,31 +4409,51 @@ VkResult createDescriptorSet(void)
     }
 
     // describe whether we want buffer as uniform or image as uniform
+    // for uniform buffer
     VkDescriptorBufferInfo vkDescriptorBufferInfo;
-
     memset((void *)&vkDescriptorBufferInfo, 0, sizeof(VkDescriptorBufferInfo));
 
     vkDescriptorBufferInfo.buffer = uniformData.vkBuffer;
     vkDescriptorBufferInfo.offset = 0;
     vkDescriptorBufferInfo.range = sizeof(MyUniformData);
 
+    // for texture image and sampler
+    VkDescriptorImageInfo vkDescriptorImageInfo;
+    memset((void *)&vkDescriptorImageInfo, 0, sizeof(VkDescriptorImageInfo));
+
+    vkDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    vkDescriptorImageInfo.imageView = vkImageView_texture;
+    vkDescriptorImageInfo.sampler = vkSampler_texture;
+
+
     // now update the above descriptor set directly to the shader
     // two ways to update writing directly to shader or copy one shader to another shader, we will prefer directly wrinting to the shader this require initializetion of following structure
-    VkWriteDescriptorSet vkWriteDescriptorSet;
-    memset((void *)&vkWriteDescriptorSet, 0, sizeof(VkWriteDescriptorSet));
+    VkWriteDescriptorSet vkWriteDescriptorSet_array[2]; // for above 2 structures
+    memset((void *)vkWriteDescriptorSet_array, 0, sizeof(VkWriteDescriptorSet) * _ARRAYSIZE(vkWriteDescriptorSet_array));
 
-    vkWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    vkWriteDescriptorSet.pNext = NULL;
-    vkWriteDescriptorSet.dstSet = vkDescriptorSet;
-    vkWriteDescriptorSet.dstArrayElement = 0;
-    vkWriteDescriptorSet.descriptorCount = 1;
-    vkWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    vkWriteDescriptorSet.pBufferInfo = &vkDescriptorBufferInfo;
-    vkWriteDescriptorSet.pImageInfo = NULL;
-    vkWriteDescriptorSet.pTexelBufferView = NULL;
-    vkWriteDescriptorSet.dstBinding = 0;  // our uniform at binding index 0 in shader
+    vkWriteDescriptorSet_array[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    vkWriteDescriptorSet_array[0].pNext = NULL;
+    vkWriteDescriptorSet_array[0].dstSet = vkDescriptorSet;
+    vkWriteDescriptorSet_array[0].dstArrayElement = 0;
+    vkWriteDescriptorSet_array[0].descriptorCount = 1;
+    vkWriteDescriptorSet_array[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    vkWriteDescriptorSet_array[0].pBufferInfo = &vkDescriptorBufferInfo;
+    vkWriteDescriptorSet_array[0].pImageInfo = NULL;
+    vkWriteDescriptorSet_array[0].pTexelBufferView = NULL;
+    vkWriteDescriptorSet_array[0].dstBinding = 0;  // our uniform at binding index 0 in shader
 
-    vkUpdateDescriptorSets(vkDevice, 1, &vkWriteDescriptorSet, 0, NULL);
+    vkWriteDescriptorSet_array[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    vkWriteDescriptorSet_array[1].pNext = NULL;
+    vkWriteDescriptorSet_array[1].dstSet = vkDescriptorSet;
+    vkWriteDescriptorSet_array[1].dstArrayElement = 0;
+    vkWriteDescriptorSet_array[1].descriptorCount = 1;
+    vkWriteDescriptorSet_array[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkWriteDescriptorSet_array[1].pBufferInfo = NULL;
+    vkWriteDescriptorSet_array[1].pImageInfo = &vkDescriptorImageInfo;
+    vkWriteDescriptorSet_array[1].pTexelBufferView = NULL;
+    vkWriteDescriptorSet_array[1].dstBinding = 1; // our uniform at binding index 1 in shader
+
+    vkUpdateDescriptorSets(vkDevice, _ARRAYSIZE(vkWriteDescriptorSet_array), vkWriteDescriptorSet_array, 0, NULL);
 
     return(vkResult);
 }
