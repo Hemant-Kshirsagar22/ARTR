@@ -4343,7 +4343,7 @@ VkResult createDescriptorPool(void)
     // code
     // before creating actual descriptor pool vulkan expects descriptor pool size
     VkDescriptorPoolSize vkDescriptorPoolSize_array[2]; // 0th for MVP vbo and 1st for texture
-    memset((void *)&vkDescriptorPoolSize, 0, sizeof(VkDescriptorPoolSize) * _ARRAYSIZE(vkDescriptorPoolSize_array));
+    memset((void *)vkDescriptorPoolSize_array, 0, sizeof(VkDescriptorPoolSize) * _ARRAYSIZE(vkDescriptorPoolSize_array));
 
     // for MVP uniform
     vkDescriptorPoolSize_array[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -4361,7 +4361,7 @@ VkResult createDescriptorPool(void)
     vkDescriptorPoolCreateInfo.pNext = NULL;
     vkDescriptorPoolCreateInfo.flags = 0;
     vkDescriptorPoolCreateInfo.poolSizeCount = _ARRAYSIZE(vkDescriptorPoolSize_array);
-    vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize;
+    vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize_array;
     vkDescriptorPoolCreateInfo.maxSets = 2;
 
     vkResult = vkCreateDescriptorPool(vkDevice, &vkDescriptorPoolCreateInfo, NULL, &vkDescriptorPool);
