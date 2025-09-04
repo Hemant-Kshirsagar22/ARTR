@@ -3538,7 +3538,7 @@ VkResult createTexture(const char *textureFileName)
         vkPipelineStageFlags_source = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         vkPipelineStageFlags_destination = VK_PIPELINE_STAGE_TRANSFER_BIT;
     }  
-    else if(vkImageMemoryBarrier.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && vkImageMemoryBarrier.newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL)
+    else if(vkImageMemoryBarrier.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && vkImageMemoryBarrier.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
     {
         vkImageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         vkImageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -3759,7 +3759,7 @@ VkResult createTexture(const char *textureFileName)
     vkImageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     vkImageMemoryBarrier.pNext = NULL;
     vkImageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    vkImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+    vkImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     vkImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     vkImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     vkImageMemoryBarrier.image = vkImage_texture;
@@ -3776,7 +3776,7 @@ VkResult createTexture(const char *textureFileName)
         vkPipelineStageFlags_source = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         vkPipelineStageFlags_destination = VK_PIPELINE_STAGE_TRANSFER_BIT;
     }
-    else if (vkImageMemoryBarrier.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && vkImageMemoryBarrier.newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL)
+    else if (vkImageMemoryBarrier.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && vkImageMemoryBarrier.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
     {
         vkImageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         vkImageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
