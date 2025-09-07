@@ -4818,7 +4818,7 @@ VkResult buildCommandBuffers(void)
 
         // here we should call vulkan drawing functions
         vkCmdDraw(vkCommandBuffer_array[i], 
-            16, // no of vertices
+            12, // no of vertices
             1, // no of instance
             0, // first vertex
             0 // first instace
