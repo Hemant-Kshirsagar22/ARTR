@@ -11,4 +11,6 @@ void main(void)
 {
 	// code
 	gl_Position = uMyUniformData.mvpMatrix * vPosition;
+	
+    gl_Position.y = -gl_Position.y;
 }

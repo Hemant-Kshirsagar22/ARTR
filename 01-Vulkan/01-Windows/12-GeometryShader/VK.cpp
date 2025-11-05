@@ -3175,7 +3175,7 @@ VkResult updateUniformBuffer(void)
 
     glm::mat4 perspectivePojectionMatrix = glm::mat4(1.0f);
     
-    modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+    modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -6.0f));
     
     perspectivePojectionMatrix = glm::perspective(glm::radians(45.0f), (float)winWidth / (float)winHeight, 0.1f, 100.0f);
     perspectivePojectionMatrix[1][1] = perspectivePojectionMatrix[1][1] * (-1.0f);
