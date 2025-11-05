@@ -23,7 +23,7 @@
 // macros
 #define WIN_WIDTH 800
 #define WIN_HEIGHT 600
-#define _ARRAYSIZE (x) (sizeof(x) / sizeof(x[0]))
+#define _ARRAYSIZE(x) (sizeof(x) / sizeof(x[0]))
 
 // global variables
 const char *gpszAppName = "ARTR";
@@ -82,8 +82,6 @@ VkColorSpaceKHR vkColorSpaceKHR = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 VkPresentModeKHR vkPresentModeKHR = VK_PRESENT_MODE_FIFO_KHR;
 
 // swapchain related global variables
-int winWidth = WIN_WIDTH;
-int winHeight = WIN_HEIGHT;
 VkSwapchainKHR vkSwapchainKHR = VK_NULL_HANDLE;
 VkExtent2D vkExtent2D_swapchain;
 
@@ -178,7 +176,7 @@ int main(int argc, char *argv[])
     void toggleFullScreen(void);
     Bool isWindowMinimized(void);
     VkResult initialize(void);
-    void resize(int, int);
+    VkResult resize(int, int);
     VkResult display(void);
     void update(void);
     void uninitialize(void);
@@ -356,7 +354,7 @@ int main(int argc, char *argv[])
                 break;
 
                 case ConfigureNotify: // similar to WM_SIZE
-                    if(isWindowMinimized() == False)
+                    if(isWindowMinimized() == False || bFullScreen == True)
                     {
                         resize(event.xconfigure.width, event.xconfigure.height);
                     }
@@ -632,6 +630,7 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createSwapchain() success\n\n", __func__);
     }
+    fflush(gpFile);
 
     // create vulkan images and image view
     vkResult = createImagesAndImageView();
@@ -646,6 +645,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createImagesAndImageView() success\n\n", __func__);
     }
 
+    fflush(gpFile);
     // create command pool
     vkResult = createCommandPool();
     if (vkResult != VK_SUCCESS)
@@ -658,6 +658,9 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createCommandPool() success\n\n", __func__);
     }
+
+
+    fflush(gpFile);
 
     // create command buffer
     vkResult = createCommandBuffer();
@@ -685,6 +688,8 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createVertexBuffer() success\n\n", __func__);
     }
 
+    fflush(gpFile);
+    
     // create
     vkResult = createUniformBuffer();
     if (vkResult != VK_SUCCESS)
@@ -697,6 +702,10 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createUniformBuffer() success\n\n", __func__);
     }
+
+
+    fflush(gpFile);
+    
 
     // create shaders
     vkResult = createShaders();
@@ -711,6 +720,9 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createShaders() success\n\n", __func__);
     }
 
+
+    fflush(gpFile);
+    
     // create descriptor set layout
     vkResult = createDescriptorSetLayout();
     if (vkResult != VK_SUCCESS)
@@ -724,6 +736,8 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createDescriptorSetLayout() success\n\n", __func__);
     }
 
+    fflush(gpFile);
+    
     // create pipeline layout
     vkResult = createPipelineLayout();
     if (vkResult != VK_SUCCESS)
@@ -736,6 +750,9 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createPipelineLayout() success\n\n", __func__);
     }
+
+    fflush(gpFile);
+    
 
     // create descriptor pool
     vkResult = createDescriptorPool();
@@ -750,6 +767,8 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createDescriptorPool() success\n\n", __func__);
     }
 
+    fflush(gpFile);
+
     // create descriptor set
     vkResult = createDescriptorSet();
     if (vkResult != VK_SUCCESS)
@@ -762,7 +781,9 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createDescriptorSet() success\n\n", __func__);
     }
-
+    
+    fflush(gpFile);
+    
     // create render pass
     vkResult = createRenderPass();
     if (vkResult != VK_SUCCESS)
@@ -776,6 +797,8 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createRenderPass() success\n\n", __func__);
     }
 
+    fflush(gpFile);
+    
     // create pipeline
     vkResult = createPipeline();
     if (vkResult != VK_SUCCESS)
@@ -789,6 +812,8 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createPipeline() success\n\n", __func__);
     }
 
+    fflush(gpFile);
+    
     // create frame buffer
     vkResult = createFrameBuffers();
     if (vkResult != VK_SUCCESS)
@@ -801,6 +826,9 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createFrameBuffers() success\n\n", __func__);
     }
+    
+    fflush(gpFile);
+    
 
     // create semaphore
     vkResult = createSemaphores();
@@ -848,10 +876,15 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> buildCommandBuffers() success\n\n", __func__);
     }
 
+    fflush(gpFile);
+    
     // initialization is completed
     bInitialized = True;
     fprintf(gpFile, "Initializeation successfully !!!\n\n");
     fprintf(gpFile, "================================== INITIALIZATION END ==================================\n\n");
+    
+    fflush(gpFile);
+    
     return (vkResult);
 }
 
@@ -1189,6 +1222,16 @@ void uninitialize(void)
     void toggleFullScreen(void);
 
     // code
+    fflush(gpFile);
+    // destroy swapchain
+    if (vkSwapchainKHR)
+    {
+        vkDestroySwapchainKHR(vkDevice, vkSwapchainKHR, NULL);
+        vkSwapchainKHR = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vkSwapchinKHR is uninitialized\n", __func__);
+    }
+    fflush(gpFile);
+
     if(bFullScreen == True)
     {
         toggleFullScreen();
@@ -1279,6 +1322,7 @@ void uninitialize(void)
         fprintf(gpFile, "%s()-> vkRenderPass is done\n", __func__);
     }
 
+    
     // destroy descriptor pool
     // when we destory descriptor pool it will destroy vkDesriptor Set also
     if(vkDescriptorPool)
@@ -1396,14 +1440,8 @@ void uninitialize(void)
         swapchainImage_array = NULL;
     }
 
-    // destroy swapchain
-    if (vkSwapchainKHR)
-    {
-        vkDestroySwapchainKHR(vkDevice, vkSwapchainKHR, NULL);
-        vkSwapchainKHR = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s()-> vkSwapchinKHR is uninitialized\n", __func__);
-    }
-
+    
+    fflush(gpFile);
     // no need to destroy the selected physical device
 
     // destroy vulkan device
