@@ -6,3 +6,9 @@
 
 LOG.txt
 glm/
+
+XWindow
+XWindow.o
+
+VK
+VK.o
