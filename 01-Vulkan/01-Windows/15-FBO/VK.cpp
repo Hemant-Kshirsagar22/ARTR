@@ -707,6 +707,31 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createSwapchain() success\n\n", __func__);
     }
 
+    // create vulkan images and image view
+    vkResult = createImagesAndImageView();
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createImagesAndImageView() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createImagesAndImageView() success\n\n", __func__);
+    }
+    fflush(gpFile);
+     // create command pool
+    vkResult = createCommandPool();
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandPool() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createCommandPool() success\n\n", __func__);
+    }
     // ----------------------- FBO START-----------------------------
        // create vulkan images and image view
     vkResult = createImagesAndImageView_FBO();
@@ -720,7 +745,7 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createImagesAndImageView_FBO() success\n\n", __func__);
     }
-
+    
     // create command buffer
     vkResult = createCommandBuffer_FBO();
     if (vkResult != VK_SUCCESS)
@@ -733,7 +758,8 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createCommandBuffer_FBO() success\n\n", __func__);
     }
-
+    
+    fflush(gpFile);
     // calculate number of face indices
     numFaceIndices = sizeof(face_indicies) / sizeof(face_indicies[0]);
     // position
@@ -832,6 +858,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createIndexBuffer_FBO() success\n\n", __func__);
     }
 
+    fflush(gpFile);
     // create uniform
     vkResult = createUniformBuffer_FBO();
     if (vkResult != VK_SUCCESS)
@@ -845,6 +872,8 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createUniformBuffer_FBO() success\n\n", __func__);
     }
 
+    
+    fflush(gpFile);
     // create shaders
     vkResult = createShaders_FBO();
     if (vkResult != VK_SUCCESS)
@@ -857,6 +886,9 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createShaders_FBO() success\n\n", __func__);
     }
+
+    
+    fflush(gpFile);
 
     // create descriptor set layout
     vkResult = createDescriptorSetLayout_FBO();
@@ -871,6 +903,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createDescriptorSetLayout_FBO() success\n\n", __func__);
     }
 
+    fflush(gpFile);
     // create pipeline layout
     vkResult = createPipelineLayout_FBO();
     if (vkResult != VK_SUCCESS)
@@ -884,6 +917,8 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createPipelineLayout_FBO() success\n\n", __func__);
     }
 
+    
+    fflush(gpFile);
     // create descriptor pool
     vkResult = createDescriptorPool_FBO();
     if (vkResult != VK_SUCCESS)
@@ -896,6 +931,9 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createDescriptorPool_FBO() success\n\n", __func__);
     }
+
+    
+    fflush(gpFile);
 
     // create descriptor set
     vkResult = createDescriptorSet_FBO();
@@ -910,6 +948,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createDescriptorSet_FBO() success\n\n", __func__);
     }
 
+    
     // create render pass
     vkResult = createRenderPass_FBO();
     if (vkResult != VK_SUCCESS)
@@ -923,6 +962,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createRenderPass_FBO() success\n\n", __func__);
     }
 
+    
     // create pipeline
     vkResult = createPipeline_FBO();
     if (vkResult != VK_SUCCESS)
@@ -948,6 +988,10 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createFrameBuffer_FBO() success\n\n", __func__);
     }
+
+    
+    
+    fflush(gpFile);
 
     // create semaphore
     vkResult = createSemaphore_FBO();
@@ -986,33 +1030,8 @@ VkResult initialize(void)
     }
 
     // ----------------------- FBO  END ------------------------------
-
-    // create vulkan images and image view
-    vkResult = createImagesAndImageView();
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s()-> createImagesAndImageView() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return (vkResult);
-    }
-    else
-    {
-        fprintf(gpFile, "%s()-> createImagesAndImageView() success\n\n", __func__);
-    }
-
-    // create command pool
-    vkResult = createCommandPool();
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s()-> createCommandPool() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return (vkResult);
-    }
-    else
-    {
-        fprintf(gpFile, "%s()-> createCommandPool() success\n\n", __func__);
-    }
-
+     
+    
     // create command buffer
     vkResult = createCommandBuffer();
     if (vkResult != VK_SUCCESS)
@@ -1025,7 +1044,8 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createCommandBuffer() success\n\n", __func__);
     }
-
+    
+    
     // create vertex buffer
     vkResult = createVertexBuffer();
     if (vkResult != VK_SUCCESS)
@@ -1156,6 +1176,10 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createFrameBuffers() success\n\n", __func__);
     }
 
+    fflush(gpFile);
+    
+    
+
     // create semaphore
     vkResult = createSemaphores();
     if (vkResult != VK_SUCCESS)
@@ -1257,7 +1281,7 @@ VkResult resize(int width, int height)
     // VIMP as FBO scene animating, hence recreating all terxture related code
     vkResetDescriptorPool(vkDevice, vkDescriptorPool, 0);
     // to balance above call to reset descriptor pool recreate descriptor set
-    vkResult = createDescriptorSet()
+    vkResult = createDescriptorSet();
     if(vkResult != VK_SUCCESS)
     {
         fprintf(gpFile,"%s()-> createDescriptorSet() failed !!!\n\n", __func__);
@@ -1546,7 +1570,7 @@ VkResult display(void)
     vkResult = vkQueueSubmit(vkQueue,
                             1,      // number of vkSubmit info
                             &vkSubmitInfo,
-                            vkFence_array[currentImageIndex]);
+                            VK_NULL_HANDLE);
 
      // to synchronize to wait host for going ahead we will add pipeline stage flags
     VkPipelineStageFlags vkPipelineStageFlags_array[2];
@@ -1567,7 +1591,7 @@ VkResult display(void)
 
     vkSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     vkSubmitInfo.pNext = NULL;
-    vkSubmitInfo.pWaitDstStageMask = &vkPipelineStageFlags_array;
+    vkSubmitInfo.pWaitDstStageMask = vkPipelineStageFlags_array;
     vkSubmitInfo.waitSemaphoreCount = _ARRAYSIZE(vkSemaphore_array);
     vkSubmitInfo.pWaitSemaphores = vkSemaphore_array;
     vkSubmitInfo.commandBufferCount = 1;
@@ -1634,7 +1658,7 @@ void update(void)
 {
     void update_FBO(void);
     // code
-    angle_cube = angle_cube + 1.0f;
+    angle_cube = angle_cube + 0.5f;
 
     if (angle_cube >= 360.0f)
     {
@@ -2000,6 +2024,8 @@ VkResult createVulkanInstance(void)
         fprintf(gpFile, "createVulkanInstance()-> fillInstanceExtensionNames() success\n\n");
     }
 
+    fflush(gpFile);
+
     if(bValidation == TRUE)
     {    
         //  fill and initalize required validation layer names and count global variables.
@@ -2047,7 +2073,7 @@ VkResult createVulkanInstance(void)
         vkInstanceCreateInfo.enabledLayerCount = 0;
         vkInstanceCreateInfo.ppEnabledLayerNames = NULL; 
     }
-
+fflush(gpFile);
     // 4. call vkCreateInstance() to get VkInstance in a global variable and do error checking.
     vkResult = vkCreateInstance(&vkInstanceCreateInfo, NULL, &vkInstance);
     if (vkResult == VK_ERROR_INCOMPATIBLE_DRIVER)
@@ -2085,6 +2111,7 @@ VkResult createVulkanInstance(void)
         }
     }
     
+    fflush(gpFile);
     fprintf(gpFile, "\n======================== STEPS FOR INSTANCE CREATION END ================================\n\n");
     return (vkResult);
 }
@@ -3975,7 +4002,7 @@ VkResult updateUniformBuffer(void)
     
     glm::mat4 scaleMatrix = glm::mat4(1.0f);
 
-    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -4.0f));
 
     rotationMatrix_x = glm::rotate(glm::mat4(1.0f), glm::radians(angle_cube), glm::vec3(1.0f, 0.0f, 0.0f));
     rotationMatrix_y = glm::rotate(glm::mat4(1.0f), glm::radians(angle_cube), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -5207,6 +5234,7 @@ VkResult resize_FBO(int width, int height)
         return (vkResult);
     }
    
+    bInitialized_FBO = TRUE;
     bInitialized = TRUE;
     return(vkResult);
 }
@@ -5544,6 +5572,8 @@ VkResult createImagesAndImageView_FBO(void)
         fprintf(gpFile, "%s()-> vkCreateImage() call success for vkImage_FBO \n\n", __func__);
     }
 
+    
+
     VkMemoryRequirements vkMemoryRequirements_image;
     memset((void *)&vkMemoryRequirements_image, 0, sizeof(VkMemoryRequirements));
 
@@ -5583,6 +5613,7 @@ VkResult createImagesAndImageView_FBO(void)
         fprintf(gpFile, "%s()-> vkAllocateMemory() call success for vkDeviceMemory_FBO\n\n", __func__);
     }
 
+    
     vkResult = vkBindImageMemory(vkDevice, vkImage_FBO, vkDeviceMemory_FBO, 0);
     if (vkResult != VK_SUCCESS)
     {
@@ -5655,10 +5686,12 @@ VkResult createImagesAndImageView_FBO(void)
         fprintf(gpFile, "%s()-> vkCreateSampler() call success vkSampler_FBO \n\n", __func__);
     }
 
+    
+    fflush(gpFile);
+    
     // --------------------------------------------------------------------------------
     // for depth image
     // for depth image initialize VkImageCreateInfo
-    VkImageCreateInfo vkImageCreateInfo;
     memset((void *)&vkImageCreateInfo, 0, sizeof(VkImageCreateInfo));
 
     vkImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -5680,6 +5713,7 @@ VkResult createImagesAndImageView_FBO(void)
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s()-> vkCreateImage() failed  (ERROR CODE : %d )!!!\n\n", __func__, vkResult);
+        
         return (vkResult);
     }
     else
@@ -5687,6 +5721,8 @@ VkResult createImagesAndImageView_FBO(void)
         fprintf(gpFile, "%s()-> vkCreateImage() call success\n\n", __func__);
     }
 
+    fflush(gpFile);
+    
     // memory requirements for depth images
     VkMemoryRequirements vkMemoryRequirements;
     memset((void *)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
@@ -5727,6 +5763,9 @@ VkResult createImagesAndImageView_FBO(void)
         fprintf(gpFile, "%s()-> vkAllocateMemory() call success for vkDeviceMemory_depth\n\n", __func__);
     }
 
+    
+    fflush(gpFile);
+
     vkResult = vkBindImageMemory(vkDevice, vkImage_depth_FBO, vkDeviceMemory_depth_FBO, 0);
     if (vkResult != VK_SUCCESS)
     {
@@ -5738,6 +5777,8 @@ VkResult createImagesAndImageView_FBO(void)
         fprintf(gpFile, "%s()-> vkBindBufferMemory() call success for depthFBO\n\n", __func__);
     }
 
+
+    fflush(gpFile);
     // create image view for above depth image
     memset((void *)&vkImageViewCreateInfo, 0, sizeof(VkImageViewCreateInfo));
 
@@ -5764,6 +5805,8 @@ VkResult createImagesAndImageView_FBO(void)
         fprintf(gpFile, "%s()-> vkCreateImageView() call success for depth\n\n", __func__);
     }
 
+    
+    fflush(gpFile);
     fprintf(gpFile, "\n======================== CREATE IMAGES AND IMAGE VIEW END ================================\n\n");
     return (vkResult);
 }
@@ -5787,7 +5830,7 @@ VkResult createCommandBuffer_FBO(void)
     vkCommandBufferAllocateInfo.commandBufferCount = 1;
 
     // allocate command buffer
-    vkResult = vkAllocateCommandBuffers(vkDevice, &vkCommandBufferAllocateInfo, vkCommandBuffer_FBO);
+    vkResult = vkAllocateCommandBuffers(vkDevice, &vkCommandBufferAllocateInfo, &vkCommandBuffer_FBO);
 
     if (vkResult != VK_SUCCESS)
     {
@@ -5796,7 +5839,7 @@ VkResult createCommandBuffer_FBO(void)
     }
     else
     {
-        fprintf(gpFile, "%s()-> vkAllocateCommandBuffers() call success for i = %d\n\n", __func__, i);
+        fprintf(gpFile, "%s()-> vkAllocateCommandBuffers() call success\n\n", __func__);
     }
     fprintf(gpFile, "\n========================== CREATE COMMAND BUFFER END ================================\n\n");
     return(vkResult);
@@ -6605,7 +6648,7 @@ VkResult createTexture_FBO(const char *textureFileName)
     vkBufferImageCopy.imageExtent.height = texture_height;
     vkBufferImageCopy.imageExtent.depth = 1;
     
-    vkCmdCopyBufferToImage(vkCommandBuffer_buffer_to_image_copy, vkBuffer_stagingBuffer, vkImage_texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkBufferImageCopy);
+    vkCmdCopyBufferToImage(vkCommandBuffer_buffer_to_image_copy, vkBuffer_stagingBuffer, vkImage_texture_FBO, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkBufferImageCopy);
 
     vkResult = vkEndCommandBuffer(vkCommandBuffer_buffer_to_image_copy);
     if (vkResult != VK_SUCCESS)
@@ -7344,9 +7387,13 @@ VkResult createDescriptorPool_FBO(void)
 
 VkResult createDescriptorSet_FBO(void)
 {
+    
+    fprintf(gpFile, "%s()-> START", __func__);
+    fflush(gpFile);
     // variable declaration
     VkResult vkResult = VK_SUCCESS;
     // code
+    
 
     // initialize descriptor allocation info
     VkDescriptorSetAllocateInfo vkDescriptorSetAllocateInfo;
@@ -7357,13 +7404,17 @@ VkResult createDescriptorSet_FBO(void)
     vkDescriptorSetAllocateInfo.pNext = NULL;
     vkDescriptorSetAllocateInfo.descriptorPool = vkDescriptorPool_FBO;
     vkDescriptorSetAllocateInfo.descriptorSetCount = 1; // though we have 2 descriptors 1 for mvp uniform and 1 for texture sampler, both are in 1 same descriptor set
-    vkDescriptorSetAllocateInfo.pSetLayouts = &vkDescriptorSetLayout;
+    vkDescriptorSetAllocateInfo.pSetLayouts = &vkDescriptorSetLayout_FBO;
 
     vkResult = vkAllocateDescriptorSets(vkDevice, &vkDescriptorSetAllocateInfo, &vkDescriptorSet_FBO);
 
+    
+    fprintf(gpFile, "%s()-> !!", __func__);
+    
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s()-> vkAllocateDescriptorSets() failed (ERROR CODE : %d )!!!\n\n", __func__, vkResult);
+        fflush(gpFile);
         return (vkResult);
     }
     else
@@ -7371,6 +7422,7 @@ VkResult createDescriptorSet_FBO(void)
         fprintf(gpFile, "%s()-> vkAllocateDescriptorSets() call success\n\n", __func__);
     }
 
+    fflush(gpFile);
     // describe whether we want buffer as uniform or image as uniform
     VkDescriptorBufferInfo vkDescriptorBufferInfo;
 
@@ -7442,7 +7494,7 @@ VkResult createRenderPass_FBO(void)
     vkAttachmentDescription_array[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; // it is also depth loadOp
     vkAttachmentDescription_array[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // it is also depth storeOp
     vkAttachmentDescription_array[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    vkAttachmentDescription_array[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    vkAttachmentDescription_array[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     // for depth
     vkAttachmentDescription_array[1].flags = 0;
@@ -7778,8 +7830,6 @@ VkResult createFrameBuffer_FBO(void)
     fprintf(gpFile, "\n======================== CREATE FRAMEBUFFERS START ================================\n\n");
 
     //  Allocate the framebuffer array by malloc equal to the sizeof swapchain image count.
-    vkFramebuffer_FBO
-
     VkImageView vkImageView_attachments_array[2]; // for color and depth
     memset((void *)vkImageView_attachments_array, 0, sizeof(VkImageView) * _ARRAYSIZE(vkImageView_attachments_array));
 
@@ -7789,14 +7839,14 @@ VkResult createFrameBuffer_FBO(void)
     vkFramebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     vkFramebufferCreateInfo.pNext = NULL;
     vkFramebufferCreateInfo.flags = 0;
-    vkFramebufferCreateInfo.renderPass = vkRenderPass;
+    vkFramebufferCreateInfo.renderPass = vkRenderPass_FBO;
     vkFramebufferCreateInfo.attachmentCount = _ARRAYSIZE(vkImageView_attachments_array);
     vkFramebufferCreateInfo.pAttachments = vkImageView_attachments_array;
     vkFramebufferCreateInfo.width = fboWidth;
     vkFramebufferCreateInfo.height = fboHeight;
     vkFramebufferCreateInfo.layers = 1;
     
-    vkImageView_attachments_array[0] = vkImageView_fBO;
+    vkImageView_attachments_array[0] = vkImageView_FBO;
     vkImageView_attachments_array[1] = vkImageView_depth_FBO;
 
     vkResult = vkCreateFramebuffer(vkDevice, &vkFramebufferCreateInfo, NULL, &vkFramebuffer_FBO);
