@@ -173,11 +173,39 @@ VkViewport vkViewport;
 VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
 
-// signware related variables
+// sineware related variables
+
+float pos_64_graphics[64][64][4];
+VertexData vertexData_position_64x64_graphics;
+VkCommandBuffer *vkCommandBuffer_for_64x64_graphics_array = NULL;
+
+float pos_128_graphics[128][128][4];
+VertexData vertexData_position_128x128_graphics;
+VkCommandBuffer *vkCommandBuffer_for_128x128_graphics_array = NULL;
+
+float pos_256_graphics[256][256][4];
+VertexData vertexData_position_256x256_graphics;
+VkCommandBuffer *vkCommandBuffer_for_256x256_graphics_array = NULL;
+
+float pos_512_graphics[512][512][4];
+VertexData vertexData_position_512x512_graphics;
+VkCommandBuffer *vkCommandBuffer_for_512x512_graphics_array = NULL;
+
 float pos_1024_graphics[1024][1024][4];
 VertexData vertexData_position_1024x1024_graphics;
 VkCommandBuffer *vkCommandBuffer_for_1024x1024_graphics_array = NULL;
-BOOL bMesh_1024_chosen = TRUE;
+
+enum MESH_SIZE {
+    MESH_SIZE_64X64 = 0,
+    MESH_SIZE_128X128,
+    MESH_SIZE_256X256,
+    MESH_SIZE_512X512,
+    MESH_SIZE_1024X1024
+};
+
+MESH_SIZE selected_mesh_size = MESH_SIZE_1024X1024;
+int size_toggle_count = 0;
+
 char color_from_key = 'O';
 float animation_time = 0.0f;
 
@@ -365,8 +393,35 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
         case VK_ESCAPE:
             DestroyWindow(hwnd);
             break;
-        case 52:
-            bMesh_1024_chosen = TRUE;
+        case VK_SPACE:
+            size_toggle_count = size_toggle_count + 1;
+            if(size_toggle_count > 4)
+            {
+                size_toggle_count = 0;
+            }
+            switch(size_toggle_count)
+            {
+                case 0:
+                    selected_mesh_size = MESH_SIZE_1024X1024;
+                    break;
+                case 1:
+                    selected_mesh_size = MESH_SIZE_64X64;
+                    break;
+                case 2:
+                    selected_mesh_size = MESH_SIZE_128X128;
+                    break;
+                case 3:
+                    selected_mesh_size = MESH_SIZE_256X256;
+                    break;
+                case 4:
+                    selected_mesh_size = MESH_SIZE_512X512;
+                    break;
+                default:
+                    selected_mesh_size = MESH_SIZE_1024X1024;
+                    break;
+            }
+            
+            fprintf(gpFile, "size toggle count : %d\n", size_toggle_count);
             break;
         default:
             break;
@@ -498,7 +553,7 @@ VkResult initialize(void)
     VkResult createImagesAndImageView(void);
     VkResult createCommandPool(void);
     VkResult createCommandBuffer(VkCommandBuffer **);
-    void initializeSignWaveArrays(int, int);
+    void initializeSineWaveArrays(int, int);
     VkResult createVertexBuffer(unsigned int, unsigned int, VertexData *);
     VkResult createUniformBuffer(void);
     VkResult createShaders(void);
@@ -619,7 +674,59 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createCommandPool() success\n\n", __func__);
     }
 
-    // create command buffer
+    // create command buffer for 64x64
+    vkResult = createCommandBuffer(&vkCommandBuffer_for_64x64_graphics_array);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_64x64_graphics_array) failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_64x64_graphics_array) success\n\n", __func__);
+    }
+
+    // create command buffer for 128x128
+    vkResult = createCommandBuffer(&vkCommandBuffer_for_128x128_graphics_array);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_128x128_graphics_array) failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_128x128_graphics_array) success\n\n", __func__);
+    }
+
+    // create command buffer for 256x256
+    vkResult = createCommandBuffer(&vkCommandBuffer_for_256x256_graphics_array);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_256x256_graphics_array) failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_256x256_graphics_array) success\n\n", __func__);
+    }
+
+    // create command buffer for 512x512
+    vkResult = createCommandBuffer(&vkCommandBuffer_for_512x512_graphics_array);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_512x512_graphics_array) failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_512x512_graphics_array) success\n\n", __func__);
+    }
+
+    // create command buffer for 1024x1024
     vkResult = createCommandBuffer(&vkCommandBuffer_for_1024x1024_graphics_array);
     if (vkResult != VK_SUCCESS)
     {
@@ -632,8 +739,72 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_1024x1024_graphics_array) success\n\n", __func__);
     }
 
-    // initialize signware array for 1024x1024
-    initializeSignWaveArrays(1024, 1024);
+    // initialize Sineware array for 64x64
+    initializeSineWaveArrays(64, 64);
+    // initialize Sineware array for 128x128
+    initializeSineWaveArrays(128, 128);
+    // initialize Sineware array for 256x256
+    initializeSineWaveArrays(256, 256);
+    // initialize Sineware array for 512x512
+    initializeSineWaveArrays(512, 512);
+    // initialize Sineware array for 1024x1024
+    initializeSineWaveArrays(1024, 1024);
+
+    // create vertex buffer for 64x64
+    memset((void *)&vertexData_position_64x64_graphics, 0, sizeof(VertexData));
+    vkResult = createVertexBuffer(64, 64, &vertexData_position_64x64_graphics);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createVertexBuffer() failed for vertexData_position_64x64_graphics !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createVertexBuffer() success for vertexData_position_64x64_graphics\n\n", __func__);
+    }
+
+    // create vertex buffer for 128x128
+    memset((void *)&vertexData_position_128x128_graphics, 0, sizeof(VertexData));
+    vkResult = createVertexBuffer(128, 128, &vertexData_position_128x128_graphics);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createVertexBuffer() failed for vertexData_position_128x128_graphics !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createVertexBuffer() success for vertexData_position_128x128_graphics\n\n", __func__);
+    }
+        
+    // create vertex buffer for 256x256
+    memset((void *)&vertexData_position_256x256_graphics, 0, sizeof(VertexData));
+    vkResult = createVertexBuffer(256, 256, &vertexData_position_256x256_graphics);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createVertexBuffer() failed for vertexData_position_256x256_graphics !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createVertexBuffer() success for vertexData_position_256x256_graphics\n\n", __func__);
+    }
+
+    // create vertex buffer for 512x512
+    memset((void *)&vertexData_position_512x512_graphics, 0, sizeof(VertexData));
+    vkResult = createVertexBuffer(512, 512, &vertexData_position_512x512_graphics);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createVertexBuffer() failed for vertexData_position_512x512_graphics !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createVertexBuffer() success for vertexData_position_512x512_graphics\n\n", __func__);
+    }
 
     // create vertex buffer for 1024x1024
     memset((void *)&vertexData_position_1024x1024_graphics, 0, sizeof(VertexData));
@@ -907,6 +1078,59 @@ VkResult resize(int width, int height)
     }
 
     // destroy command buffers
+    // for 64x64
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_64x64_graphics_array[i]);
+        vkCommandBuffer_for_64x64_graphics_array[i] = NULL;
+    }
+    
+    if (vkCommandBuffer_for_64x64_graphics_array)
+    {
+        free(vkCommandBuffer_for_64x64_graphics_array);
+        vkCommandBuffer_for_64x64_graphics_array = NULL;
+    }
+
+    // for 128x128
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_128x128_graphics_array[i]);
+        vkCommandBuffer_for_128x128_graphics_array[i] = NULL;
+    }
+    
+    if (vkCommandBuffer_for_128x128_graphics_array)
+    {
+        free(vkCommandBuffer_for_128x128_graphics_array);
+        vkCommandBuffer_for_128x128_graphics_array = NULL;
+    }
+
+    // for 256x256
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_256x256_graphics_array[i]);
+        vkCommandBuffer_for_256x256_graphics_array[i] = NULL;
+    }
+    
+    if (vkCommandBuffer_for_256x256_graphics_array)
+    {
+        free(vkCommandBuffer_for_256x256_graphics_array);
+        vkCommandBuffer_for_256x256_graphics_array = NULL;
+    }
+
+    // for 512x512   
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_512x512_graphics_array[i]);
+        vkCommandBuffer_for_512x512_graphics_array[i] = NULL;
+    }
+    
+    if (vkCommandBuffer_for_512x512_graphics_array)
+    {
+        free(vkCommandBuffer_for_512x512_graphics_array);
+        vkCommandBuffer_for_512x512_graphics_array = NULL;
+    }
+
+    // for 1024x1024
     for (uint32_t i = 0; i < swapchainImageCount; i++)
     {
         vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_1024x1024_graphics_array[i]);
@@ -979,6 +1203,42 @@ VkResult resize(int width, int height)
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s()-> createImagesAndImageView() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+
+    // create command buffer for 64x64
+    vkResult = createCommandBuffer(&vkCommandBuffer_for_64x64_graphics_array);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_64x64_graphics_array) failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+
+    // create command buffer for 128x128
+    vkResult = createCommandBuffer(&vkCommandBuffer_for_128x128_graphics_array);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_128x128_graphics_array) failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+
+    // create command buffer for 256x256
+    vkResult = createCommandBuffer(&vkCommandBuffer_for_256x256_graphics_array);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_256x256_graphics_array) failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+
+    // create command buffer for 512x512
+    vkResult = createCommandBuffer(&vkCommandBuffer_for_512x512_graphics_array);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createCommandBuffer(vkCommandBuffer_for_512x512_graphics_array) failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
         return (vkResult);
     }
@@ -1061,7 +1321,27 @@ VkResult display(void)
         return((VkResult)VK_FALSE);
     }
 
-    if(bMesh_1024_chosen == TRUE)
+    if(selected_mesh_size == MESH_SIZE_64X64)
+    {
+        vkCommandBuffer_array = vkCommandBuffer_for_64x64_graphics_array;
+    }
+    else if(selected_mesh_size == MESH_SIZE_128X128)
+    {
+        vkCommandBuffer_array = vkCommandBuffer_for_128x128_graphics_array;
+    }
+    else if(selected_mesh_size == MESH_SIZE_256X256)
+    {
+        vkCommandBuffer_array = vkCommandBuffer_for_256x256_graphics_array;
+    }
+    else if(selected_mesh_size == MESH_SIZE_512X512)
+    {
+        vkCommandBuffer_array = vkCommandBuffer_for_512x512_graphics_array;
+    }
+    else if(selected_mesh_size == MESH_SIZE_1024X1024)
+    {
+        vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+    }
+    else 
     {
         vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
     }
@@ -1326,6 +1606,67 @@ void uninitialize(void)
     }
 
     // free vkDevice memory
+    // for 64x64
+    if(vertexData_position_64x64_graphics.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_position_64x64_graphics.vkDeviceMemory, NULL);
+        vertexData_position_64x64_graphics.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position_64x64_graphics.vkDeviceMemory is freed\n", __func__);
+    }
+
+    if(vertexData_position_64x64_graphics.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_position_64x64_graphics.vkBuffer, NULL);
+        vertexData_position_64x64_graphics.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position_64x64_graphics.vkBuffer is freed\n", __func__);
+    }
+
+    // for 128x128
+    if(vertexData_position_128x128_graphics.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_position_128x128_graphics.vkDeviceMemory, NULL);
+        vertexData_position_128x128_graphics.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position_128x128_graphics.vkDeviceMemory is freed\n", __func__);
+    }
+
+    if(vertexData_position_128x128_graphics.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_position_128x128_graphics.vkBuffer, NULL);
+        vertexData_position_128x128_graphics.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position_128x128_graphics.vkBuffer is freed\n", __func__);
+    }
+
+    // for 256x256
+    if(vertexData_position_256x256_graphics.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_position_256x256_graphics.vkDeviceMemory, NULL);
+        vertexData_position_256x256_graphics.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position_256x256_graphics.vkDeviceMemory is freed\n", __func__);
+    }
+
+    if(vertexData_position_256x256_graphics.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_position_256x256_graphics.vkBuffer, NULL);
+        vertexData_position_256x256_graphics.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position_256x256_graphics.vkBuffer is freed\n", __func__);
+    }
+
+    // for 512x512
+    if(vertexData_position_512x512_graphics.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_position_512x512_graphics.vkDeviceMemory, NULL);
+        vertexData_position_512x512_graphics.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position_512x512_graphics.vkDeviceMemory is freed\n", __func__);
+    }
+
+    if(vertexData_position_512x512_graphics.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_position_512x512_graphics.vkBuffer, NULL);
+        vertexData_position_512x512_graphics.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_position_512x512_graphics.vkBuffer is freed\n", __func__);
+    }
+
+    // for 1024x1024
     if(vertexData_position_1024x1024_graphics.vkDeviceMemory)
     {
         vkFreeMemory(vkDevice, vertexData_position_1024x1024_graphics.vkDeviceMemory, NULL);
@@ -1341,6 +1682,62 @@ void uninitialize(void)
     }
 
     // destroy command buffers
+    // for 64x64
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_64x64_graphics_array[i]);
+        vkCommandBuffer_for_64x64_graphics_array[i] = NULL;
+    }
+    
+    if (vkCommandBuffer_for_64x64_graphics_array)
+    {
+        free(vkCommandBuffer_for_64x64_graphics_array);
+        vkCommandBuffer_for_64x64_graphics_array = NULL;
+        fprintf(gpFile, "%s()-> vkCommandBuffer_for_64x64_graphics_array is done\n", __func__);
+    }
+
+    // for 128x128
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_128x128_graphics_array[i]);
+        vkCommandBuffer_for_128x128_graphics_array[i] = NULL;
+    }
+    
+    if (vkCommandBuffer_for_128x128_graphics_array)
+    {
+        free(vkCommandBuffer_for_128x128_graphics_array);
+        vkCommandBuffer_for_128x128_graphics_array = NULL;
+        fprintf(gpFile, "%s()-> vkCommandBuffer_for_128x128_graphics_array is done\n", __func__);
+    }
+
+    // for 256x256
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_256x256_graphics_array[i]);
+        vkCommandBuffer_for_256x256_graphics_array[i] = NULL;
+    }
+    
+    if (vkCommandBuffer_for_256x256_graphics_array)
+    {
+        free(vkCommandBuffer_for_256x256_graphics_array);
+        vkCommandBuffer_for_256x256_graphics_array = NULL;        
+        fprintf(gpFile, "%s()-> vkCommandBuffer_for_256x256_graphics_array is done\n", __func__);
+    }
+
+    // for 512x512   
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_512x512_graphics_array[i]);
+        vkCommandBuffer_for_512x512_graphics_array[i] = NULL;
+    }
+    
+    if (vkCommandBuffer_for_512x512_graphics_array)
+    {
+        free(vkCommandBuffer_for_512x512_graphics_array);
+        vkCommandBuffer_for_512x512_graphics_array = NULL;
+        fprintf(gpFile, "%s()-> vkCommandBuffer_for_512x512_graphics_array is done\n", __func__);
+    }
+
     for (uint32_t i = 0; i < swapchainImageCount; i++)
     {
         vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer_for_1024x1024_graphics_array[i]);
@@ -1351,7 +1748,7 @@ void uninitialize(void)
     {
         free(vkCommandBuffer_for_1024x1024_graphics_array);
         vkCommandBuffer_for_1024x1024_graphics_array = NULL;
-        fprintf(gpFile, "%s()-> vkCommandBuffer_array is done\n", __func__);
+        fprintf(gpFile, "%s()-> vkCommandBuffer_array for 1024x1024 is done\n", __func__);
     }
 
     // free command pool
@@ -3003,7 +3400,7 @@ VkResult createCommandBuffer(VkCommandBuffer **ppVkCommandBuffer_array)
     return(vkResult);
 }
 
-void initializeSignWaveArrays(int width, int height)
+void initializeSineWaveArrays(int width, int height)
 {
     for(int i = 0; i < width; i++)
     {
@@ -3011,7 +3408,27 @@ void initializeSignWaveArrays(int width, int height)
         {
             for(int k = 0; k < 4; k++)
             {
-                pos_1024_graphics[i][j][k] = 0.0f;
+                if(width == 64 && height == 64)
+                {
+                    pos_64_graphics[i][j][k] = 0.0f;
+                }
+                else if(width == 128 && height == 128)
+                {
+                    pos_128_graphics[i][j][k] = 0.0f;
+                }
+                else if(width == 256 && height == 256)
+                {
+                    pos_256_graphics[i][j][k] = 0.0f;
+                }
+                else if(width == 512 && height == 512)
+                {
+                    pos_512_graphics[i][j][k] = 0.0f;
+                } 
+                else if(width == 1024 && height == 1024)
+                {
+                    pos_1024_graphics[i][j][k] = 0.0f;
+                } 
+
             }
         }
     }
@@ -3023,13 +3440,6 @@ VkResult createVertexBuffer(unsigned int mesh_width, unsigned int mesh_height, V
     VkResult vkResult = VK_SUCCESS;
     VertexData vertexData_position;
     unsigned int size = mesh_width * mesh_height * 4 * sizeof(float);
-
-    float triangle_position[] =
-    {
-        0.0f, 1.0f, 0.0f,
-        -1.0f, -1.0f, 0.0f,
-        1.0f, -1.0f, 0.0f
-    };
 
     // code
     fprintf(gpFile, "\n======================== CREATE VERTEX BUFFER START ================================\n\n");
@@ -3124,10 +3534,31 @@ VkResult createVertexBuffer(unsigned int mesh_width, unsigned int mesh_height, V
     }
 
     // actual memeory mapped io
-    if(mesh_width == 1024 && mesh_height == 1024)
+    if(mesh_width == 64 && mesh_height == 64)
+    {
+        memcpy(data, pos_64_graphics, size);
+    }
+    else if(mesh_width == 128 && mesh_height == 128)
+    {
+        memcpy(data, pos_128_graphics, size);
+    }
+    else if(mesh_width == 256 && mesh_height == 256)
+    {
+        memcpy(data, pos_256_graphics, size);
+    }
+    else if(mesh_width == 512 && mesh_height == 512)
+    {
+        memcpy(data, pos_512_graphics, size);
+    }
+    else if(mesh_width == 1024 && mesh_height == 1024)
     {
         memcpy(data, pos_1024_graphics, size);
     }
+    else
+    {
+        memcpy(data, pos_1024_graphics, size);
+    }
+    
     vkUnmapMemory(vkDevice, vertexData_position.vkDeviceMemory);
 
     *pVertexData = vertexData_position;
@@ -4136,17 +4567,40 @@ VkResult createFences(void)
 
 VkResult buildCommandBuffers(void)
 {
-    VkResult prepareSignWaveForCPU(unsigned int, unsigned int, float);
+    VkResult prepareSineWaveForCPU(unsigned int, unsigned int, float);
     // variable declarations
     VkResult vkResult = VK_SUCCESS;
     VkCommandBuffer *vkCommandBuffer_array = NULL;
     // code
     fprintf(gpFile, "\n======================== BUILD COMMAND BUFFERS START ================================\n\n");
     
-    if(bMesh_1024_chosen == TRUE) 
+    switch(selected_mesh_size)
     {
-        prepareSignWaveForCPU(1024, 1024, animation_time);
-        vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+        case MESH_SIZE_64X64:
+            prepareSineWaveForCPU(64, 64, animation_time);
+            vkCommandBuffer_array = vkCommandBuffer_for_64x64_graphics_array;
+            break;
+        case MESH_SIZE_128X128:
+            prepareSineWaveForCPU(128, 128, animation_time);
+            vkCommandBuffer_array = vkCommandBuffer_for_128x128_graphics_array;
+            break;
+        case MESH_SIZE_256X256:
+            prepareSineWaveForCPU(256, 256, animation_time);
+            vkCommandBuffer_array = vkCommandBuffer_for_256x256_graphics_array;
+            break;
+        case MESH_SIZE_512X512:
+            prepareSineWaveForCPU(512, 512, animation_time);
+            vkCommandBuffer_array = vkCommandBuffer_for_512x512_graphics_array;
+
+            break;
+        case MESH_SIZE_1024X1024:
+            prepareSineWaveForCPU(1024, 1024, animation_time);
+            vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+            break;
+        default:
+            prepareSineWaveForCPU(1024, 1024, animation_time);
+            vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+            break;
     }
 
     // loop per swapchainImageCount
@@ -4239,17 +4693,64 @@ VkResult buildCommandBuffers(void)
         
 
         // here we should call vulkan drawing functions
-        if(bMesh_1024_chosen == TRUE)
+        switch(selected_mesh_size)
         {
-            vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_1024x1024_graphics.vkBuffer, vkDeviceSize_offset_array);
-            vkCmdDraw(vkCommandBuffer_array[i],
-                1024 * 1024, // no of vertices
-                1, // no of instance
-                0, // first vertex
-                0 // first instace
-            );
-
+            case MESH_SIZE_64X64:
+                vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_64x64_graphics.vkBuffer, vkDeviceSize_offset_array);
+                vkCmdDraw(vkCommandBuffer_array[i],
+                    64 * 64, // no of vertices
+                    1, // no of instance
+                    0, // first vertex
+                    0 // first instace
+                );
+                break;
+            case MESH_SIZE_128X128:
+                vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_128x128_graphics.vkBuffer, vkDeviceSize_offset_array);
+                vkCmdDraw(vkCommandBuffer_array[i],
+                    128 * 128, // no of vertices
+                    1, // no of instance
+                    0, // first vertex
+                    0 // first instace
+                );
+                break;
+            case MESH_SIZE_256X256:
+                vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_256x256_graphics.vkBuffer, vkDeviceSize_offset_array);
+                vkCmdDraw(vkCommandBuffer_array[i],
+                    256 * 256, // no of vertices
+                    1, // no of instance
+                    0, // first vertex
+                    0 // first instace
+                );
+                break;
+            case MESH_SIZE_512X512:
+                vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_512x512_graphics.vkBuffer, vkDeviceSize_offset_array);
+                vkCmdDraw(vkCommandBuffer_array[i],
+                    512 * 512, // no of vertices
+                    1, // no of instance
+                    0, // first vertex
+                    0 // first instace
+                );
+                break;
+            case MESH_SIZE_1024X1024:
+                vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_1024x1024_graphics.vkBuffer, vkDeviceSize_offset_array);
+                vkCmdDraw(vkCommandBuffer_array[i],
+                    1024 * 1024, // no of vertices
+                    1, // no of instance
+                    0, // first vertex
+                    0 // first instace
+                );
+                break;
+            default:
+                vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_1024x1024_graphics.vkBuffer, vkDeviceSize_offset_array);
+                vkCmdDraw(vkCommandBuffer_array[i],
+                    1024 * 1024, // no of vertices
+                    1, // no of instance
+                    0, // first vertex
+                    0 // first instace
+                );
+                break;
         }
+
         // end render pass
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);
 
@@ -4272,20 +4773,75 @@ VkResult buildCommandBuffers(void)
     return(vkResult);
 }
 
-VkResult prepareSignWaveForCPU(unsigned int mesh_width, unsigned int mesh_height, float anim_time)
+VkResult prepareSineWaveForCPU(unsigned int mesh_width, unsigned int mesh_height, float anim_time)
 {
     // function declarations
-    void fillSignWaveArraysForCPU(unsigned int, unsigned int, float);
+    void fillSineWaveArraysForCPU(unsigned int, unsigned int, float);
 
     // local variable
     VkResult vkResult = VK_SUCCESS;
     void *data = NULL;
     unsigned int size = mesh_width * mesh_height * 4 * sizeof(float);
     
-    fillSignWaveArraysForCPU(mesh_width, mesh_height, anim_time);
+    fillSineWaveArraysForCPU(mesh_width, mesh_height, anim_time);
 
     // map the buffers
-    if(mesh_width = 1024 && mesh_height == 1024)
+    if(mesh_width == 64 && mesh_height == 64)
+    {
+        vkResult = vkMapMemory(vkDevice, vertexData_position_64x64_graphics.vkDeviceMemory, 0, size, 0, &data);
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s() -> vkMapMemory() failed !!!", __func__);
+        }
+
+        memcpy(data, pos_64_graphics, size);
+        vkUnmapMemory(vkDevice, vertexData_position_64x64_graphics.vkDeviceMemory);
+    }
+    else if(mesh_width == 128 && mesh_height == 128)
+    {
+        vkResult = vkMapMemory(vkDevice, vertexData_position_128x128_graphics.vkDeviceMemory, 0, size, 0, &data);
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s() -> vkMapMemory() failed !!!", __func__);
+        }
+
+        memcpy(data, pos_128_graphics, size);
+        vkUnmapMemory(vkDevice, vertexData_position_128x128_graphics.vkDeviceMemory);
+    }
+    else if(mesh_width == 256 && mesh_height == 256)
+    {
+        vkResult = vkMapMemory(vkDevice, vertexData_position_256x256_graphics.vkDeviceMemory, 0, size, 0, &data);
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s() -> vkMapMemory() failed !!!", __func__);
+        }
+
+        memcpy(data, pos_256_graphics, size);
+        vkUnmapMemory(vkDevice, vertexData_position_256x256_graphics.vkDeviceMemory);
+    }
+    else if(mesh_width == 512 && mesh_height == 512)
+    {
+        vkResult = vkMapMemory(vkDevice, vertexData_position_512x512_graphics.vkDeviceMemory, 0, size, 0, &data);
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s() -> vkMapMemory() failed !!!", __func__);
+        }
+
+        memcpy(data, pos_512_graphics, size);
+        vkUnmapMemory(vkDevice, vertexData_position_512x512_graphics.vkDeviceMemory);
+    }
+    else if(mesh_width == 1024 && mesh_height == 1024)
+    {
+        vkResult = vkMapMemory(vkDevice, vertexData_position_1024x1024_graphics.vkDeviceMemory, 0, size, 0, &data);
+        if(vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s() -> vkMapMemory() failed !!!", __func__);
+        }
+
+        memcpy(data, pos_1024_graphics, size);
+        vkUnmapMemory(vkDevice, vertexData_position_1024x1024_graphics.vkDeviceMemory);
+    }
+    else
     {
         vkResult = vkMapMemory(vkDevice, vertexData_position_1024x1024_graphics.vkDeviceMemory, 0, size, 0, &data);
         if(vkResult != VK_SUCCESS)
@@ -4300,7 +4856,7 @@ VkResult prepareSignWaveForCPU(unsigned int mesh_width, unsigned int mesh_height
     return (vkResult);
 }
 
-void fillSignWaveArraysForCPU(unsigned int mesh_width, unsigned int mesh_height, float anim_time)
+void fillSineWaveArraysForCPU(unsigned int mesh_width, unsigned int mesh_height, float anim_time)
 {
     for(int i = 0; i < (int)mesh_width; i++)
     {
@@ -4319,15 +4875,56 @@ void fillSignWaveArraysForCPU(unsigned int mesh_width, unsigned int mesh_height,
 
                 if(k == 0)
                 {
-                    if(mesh_width == 1024 && mesh_height == 1024)
+                    if(mesh_width == 64 && mesh_height == 64)
+                    {
+                        pos_64_graphics[i][j][k] = u;
+                    }
+                    else if(mesh_width == 128 && mesh_height == 128)
+                    {
+                        pos_128_graphics[i][j][k] = u;
+                    }
+                    else if(mesh_width == 256 && mesh_height == 256)
+                    {
+                        pos_256_graphics[i][j][k] = u;
+                    }
+                    else if(mesh_width == 512 && mesh_height == 512)
+                    {
+                        pos_512_graphics[i][j][k] = u;
+                    }
+                    else if(mesh_width == 1024 && mesh_height == 1024)
                     {
                         pos_1024_graphics[i][j][k] = u;
                     }
+                    else
+                    {
+                        pos_1024_graphics[i][j][k] = u;
+                    }
+                    
                 }
 
                 if(k == 1)
                 {
-                    if(mesh_width == 1024 && mesh_height == 1024)
+                    if(mesh_width == 64 && mesh_height == 64)
+                    {
+                        pos_64_graphics[i][j][k] = w;
+                    }
+                    else if(mesh_width == 128 && mesh_height == 128)
+                    {
+                        pos_128_graphics[i][j][k] = w;
+                    }
+                    else if(mesh_width == 256 && mesh_height == 256)
+                    {
+                        pos_256_graphics[i][j][k] = w;
+                    }
+                    else if(mesh_width == 512 && mesh_height == 512)
+                    {
+                        pos_512_graphics[i][j][k] = w;
+                    }
+                    else if(mesh_width == 1024 && mesh_height == 1024)
+                    {
+                        pos_1024_graphics[i][j][k] = w;
+                    }
+                    else
                     {
                         pos_1024_graphics[i][j][k] = w;
                     }
@@ -4335,7 +4932,27 @@ void fillSignWaveArraysForCPU(unsigned int mesh_width, unsigned int mesh_height,
 
                 if(k == 2)
                 {
-                    if(mesh_width == 1024 && mesh_height == 1024)
+                    if(mesh_width == 64 && mesh_height == 64)
+                    {
+                        pos_64_graphics[i][j][k] = v;
+                    }
+                    else if(mesh_width == 128 && mesh_height == 128)
+                    {
+                        pos_128_graphics[i][j][k] = v;
+                    }
+                    else if(mesh_width == 256 && mesh_height == 256)
+                    {
+                        pos_256_graphics[i][j][k] = v;
+                    }
+                    else if(mesh_width == 512 && mesh_height == 512)
+                    {
+                        pos_512_graphics[i][j][k] = v;
+                    }
+                    else if(mesh_width == 1024 && mesh_height == 1024)
+                    {
+                        pos_1024_graphics[i][j][k] = v;
+                    }
+                    else
                     {
                         pos_1024_graphics[i][j][k] = v;
                     }
@@ -4343,7 +4960,27 @@ void fillSignWaveArraysForCPU(unsigned int mesh_width, unsigned int mesh_height,
 
                 if(k == 3)
                 {
-                    if(mesh_width == 1024 && mesh_height == 1024)
+                    if(mesh_width == 64 && mesh_height == 64)
+                    {
+                        pos_64_graphics[i][j][k] = 1.0f;
+                    }
+                    else if(mesh_width == 128 && mesh_height == 128)
+                    {
+                        pos_128_graphics[i][j][k] = 1.0f;
+                    }
+                    else if(mesh_width == 256 && mesh_height == 256)
+                    {
+                        pos_256_graphics[i][j][k] = 1.0f;
+                    }
+                    else if(mesh_width == 512 && mesh_height == 512)
+                    {
+                        pos_512_graphics[i][j][k] = 1.0f;
+                    }
+                    else if(mesh_width == 1024 && mesh_height == 1024)
+                    {
+                        pos_1024_graphics[i][j][k] = 1.0f;
+                    }
+                    else
                     {
                         pos_1024_graphics[i][j][k] = 1.0f;
                     }
