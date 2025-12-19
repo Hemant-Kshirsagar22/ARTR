@@ -254,9 +254,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     HWND hwnd;
     MSG msg;
     TCHAR szAppName[255];
-
-    int iResult = 0;
-
     BOOL bDone = FALSE;
 
     VkResult vkResult = VK_SUCCESS;
@@ -993,7 +990,7 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createPipeline() success\n\n", __func__);
     }
-
+    fflush(gpFile);
     // create frame buffer
     vkResult = createFrameBuffers();
     if (vkResult != VK_SUCCESS)
@@ -1006,7 +1003,7 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createFrameBuffers() success\n\n", __func__);
     }
-
+fflush(gpFile);
     // create semaphore
     vkResult = createSemaphores();
     if (vkResult != VK_SUCCESS)
@@ -1019,7 +1016,7 @@ VkResult initialize(void)
     {
         fprintf(gpFile, "%s()-> createSemaphores() success\n\n", __func__);
     }
-
+fflush(gpFile);
     // create fences
     vkResult = createFences();
     if (vkResult != VK_SUCCESS)
@@ -1044,6 +1041,7 @@ VkResult initialize(void)
     vkClearDepthStencilValue.depth = 1.0f; // set default clear depth
     vkClearDepthStencilValue.stencil = 0;  // set default stencil value
 
+fflush(gpFile);
     // build command buffer
     vkResult = buildCommandBuffers();
     if (vkResult != VK_SUCCESS)
@@ -1057,6 +1055,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> buildCommandBuffers() success\n\n", __func__);
     }
 
+    fflush(gpFile);
     // initialization is completed
     bInitialized = TRUE;
     fprintf(gpFile, "Initializeation successfully !!!\n\n");
@@ -1073,12 +1072,12 @@ cudaError_t initialize_cuda(void)
     
     if (cudaResult != cudaSuccess)
 	{
-		fprintf(gpFILE, "cudaGetDeviceCount() Failed.\n");
-        return(cudaResult)
+		fprintf(gpFile, "cudaGetDeviceCount() Failed.\n");
+        return(cudaResult);
 	}
 	else if (devCount == 0)
 	{
-		fprintf(gpFILE, "There is no cuda supported device.\n");
+		fprintf(gpFile, "There is no cuda supported device.\n");
 		return(cudaResult);
 	}
 	else // SUCCESS
@@ -1098,7 +1097,7 @@ cudaError_t initialize_cuda(void)
 
         uint8_t vulkanDeviceUUID[VK_UUID_SIZE];
 
-        memcpy(vulkanDeviceUUID, vkPhysicalDeviceIDProperties.deviceUUID,VK_UUID_SIZE)
+        memcpy(vulkanDeviceUUID, vkPhysicalDeviceIDProperties.deviceUUID,VK_UUID_SIZE);
 
         // as we have atleast one cuda enabled device so findout cuda equivalant UUID and compair with vulkan UUID.
         int iVulkanCudaInterOpDeviceFound = -1;
@@ -1128,7 +1127,7 @@ cudaError_t initialize_cuda(void)
             }
 
             // now compair both UUID
-            int iResult = memcmp((void *)devProp.uuid, vulkanDeviceUUID, VK_UUID_SIZE);
+            int iResult = memcmp((void *)&devProp.uuid, vulkanDeviceUUID, VK_UUID_SIZE);
 
             if(iResult != 0)
             {
@@ -1545,7 +1544,7 @@ VkResult display(void)
             {
                 dim3 block = dim3(8, 8, 1);
 	            dim3 grid = dim3(1024 / block.x, 1024 / block.y, 1);
-	            sineWaveKernel << <grid, block >> > ((float *)pos_cuda, 1024, 1024, animation_time);
+	            sineWaveKernel << <grid, block >> > ((float4 *)pos_cuda, 1024, 1024, animation_time);
             }
             break;
         default:
@@ -2117,12 +2116,12 @@ cudaError_t uninitialize_cuda(void)
         cudaResult = cudaFree(pos_cuda);
         if(cudaResult != cudaSuccess)
         {
-            fprintf(gpFile, "%s() -> cudaFree() failed !!!");
+            fprintf(gpFile, "%s() -> cudaFree() failed !!!", __func__);
             return(cudaResult);
         }
         else
         {
-            fprintf(gpFile, "%s() -> cudaFree() success !!!");
+            fprintf(gpFile, "%s() -> cudaFree() success !!!", __func__);
             pos_cuda = NULL;
         }
     }
@@ -2132,16 +2131,17 @@ cudaError_t uninitialize_cuda(void)
         cudaResult = cudaDestroyExternalMemory(cuExternalMemory);
         if(cudaResult != cudaSuccess)
         {
-            fprintf(gpFile, "%s() -> cudaDestroyExternalMemory() failed !!!");
+            fprintf(gpFile, "%s() -> cudaDestroyExternalMemory() failed !!!", __func__);
             return(cudaResult);
         }
         else
         {
-            fprintf(gpFile, "%s() -> cudaDestroyExternalMemory() success !!!");
+            fprintf(gpFile, "%s() -> cudaDestroyExternalMemory() success !!!", __func__);
         }
         cuExternalMemory = NULL;
     }
 
+    return cudaSuccess;
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -4034,18 +4034,18 @@ VkResult createExternalVertexBuffer(unsigned int mesh_width, unsigned int mesh_h
     }
 
     // close the handle as job is done
-    closeHandle(hMemoryWin32Handle);
+    CloseHandle(hMemoryWin32Handle);
     hMemoryWin32Handle = NULL;
 
     // use above external imported memory to get mapped device pointer from cuda
     // as we have buffer we map pointer to buffer
-    cudaExternalMemoryDesc cuExternalMemoryDesc;
-    memset((void *)&cuExternalMemoryDesc, 0, sizeof(cudaExternalMemoryDesc));
-    cuExternalMemoryDesc.offset = 0;
-    cuExternalMemoryDesc.size = size;
-    cuExternalMemoryDesc.flags = NULL;
+    cudaExternalMemoryBufferDesc cuExternalMemoryBufferDesc;
+    memset((void *)&cuExternalMemoryBufferDesc, 0, sizeof(cudaExternalMemoryBufferDesc));
+    cuExternalMemoryBufferDesc.offset = 0;
+    cuExternalMemoryBufferDesc.size = size;
+    cuExternalMemoryBufferDesc.flags = NULL;
 
-    cudaResult = cudaExternalMemroyGetMappedBuffer(&pos_cuda, cuExternalMemory, &cuExternalMemoryDesc);
+    cudaResult = cudaExternalMemoryGetMappedBuffer(&pos_cuda, cuExternalMemory, &cuExternalMemoryBufferDesc);
     if(cudaResult != cudaSuccess)
     {
         fprintf(gpFile, "%s() -> cudaExternalMemroyGetMappedBuffer() failed\n\n", __func__);
@@ -5068,12 +5068,37 @@ VkResult buildCommandBuffers(void)
     // code
     fprintf(gpFile, "\n======================== BUILD COMMAND BUFFERS START ================================\n\n");
     
+    switch(selected_mesh_size)
+    {
+        case MESH_SIZE_64X64:
+            vkCommandBuffer_array = vkCommandBuffer_for_64x64_graphics_array;
+            break;
+        case MESH_SIZE_128X128:
+            vkCommandBuffer_array = vkCommandBuffer_for_128x128_graphics_array;
+            break;
+        case MESH_SIZE_256X256:
+            vkCommandBuffer_array = vkCommandBuffer_for_256x256_graphics_array;
+            break;
+        case MESH_SIZE_512X512:
+            vkCommandBuffer_array = vkCommandBuffer_for_512x512_graphics_array;
+            break;
+        case MESH_SIZE_1024X1024:
+            vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+            break;
+        default:
+            vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+            break;
+    }
+
     // loop per swapchainImageCount
     for(uint32_t i = 0; i < swapchainImageCount; i++)
     {
         // reset command buffers
         vkResult = vkResetCommandBuffer(vkCommandBuffer_array[i], 0); // 0 means dont release the resources created by commandPool by these command buffers
 
+        fprintf(gpFile,"HEREH");
+        fflush(gpFile);
+        fprintf(gpFile,"\n\n");
         if(vkResult != VK_SUCCESS)
         {
             fprintf(gpFile, "%s()-> vkResetCommandBuffer() failed for i = %d (ERROR CODE : %d)\n\n", __func__, i, vkResult);
@@ -5083,7 +5108,8 @@ VkResult buildCommandBuffers(void)
         {
             fprintf(gpFile, "%s()-> vkResetCommandBuffer() success for i = %d\n", __func__, i);
         }
-
+        fprintf(gpFile,"HEREH");
+        fflush(gpFile);
         fprintf(gpFile,"\n\n");
 
         //
@@ -5105,7 +5131,8 @@ VkResult buildCommandBuffers(void)
         {
             fprintf(gpFile, "%s()-> vkBeginCommandBuffer() success for i = %d\n", __func__, i);
         }
-        
+        fprintf(gpFile,"HEREH");
+            fflush(gpFile);
         fprintf(gpFile,"\n\n");
 
         // set clear value
@@ -5197,6 +5224,7 @@ VkResult buildCommandBuffers(void)
                 );
                 break;
             case MESH_SIZE_1024X1024:
+            
                 if(bOnGPU == FALSE)
                 {
                     vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_1024x1024_graphics.vkBuffer, vkDeviceSize_offset_array);
@@ -5243,7 +5271,7 @@ VkResult buildCommandBuffers(void)
         {
             fprintf(gpFile, "%s()-> vkEndCommandBuffer() success for i = %d\n", __func__, i);
         }
-
+        fflush(gpFile);
         fprintf(gpFile,"\n\n");
     }
     
