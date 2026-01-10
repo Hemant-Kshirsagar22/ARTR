@@ -9,6 +9,14 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
+// OpenCL headers
+#define CL_TARGET_OPENCL_VERSION 300
+#include <CL/opencl.h>
+#include <CL/cl_ext.h> // for list_khr list_end_khr
+
+// opencl import library
+#pragma comment(lib, "opencl.lib")
+
 // glm related macros and header file
 #define GLM_FORCE_RADIAN
 #define GLM_FORCE_DEPTH_ZERO_TO_1
@@ -62,7 +70,7 @@ VkPhysicalDevice *vkPhysicalDevice_array = NULL;
 // Device extension related variables
 uint32_t enabledDeviceExtensionCount = 0;
 // for VK_KHR_SWAPCHAIN_EXTENSION_NAME
-const char *enabledDeviceExtensionNames_array[1];
+const char *enabledDeviceExtensionNames_array[2];
 
 // vulkan (logical) device
 VkDevice vkDevice = NULL;
@@ -174,12 +182,30 @@ VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
 
 // signware related variables
+unsigned int mesh_width = 1024;
+unsigned int mesh_height = 1024;
+
 float pos_1024_graphics[1024][1024][4];
 VertexData vertexData_position_1024x1024_graphics;
 VkCommandBuffer *vkCommandBuffer_for_1024x1024_graphics_array = NULL;
 BOOL bMesh_1024_chosen = TRUE;
 char color_from_key = 'O';
 float animation_time = 0.0f;
+
+// OpenCL related  variable
+cl_int oclResult;
+cl_platform_id oclPlatformID;
+cl_device_id oclDeviceID;
+cl_context oclContext;
+cl_command_queue oclCommandQueue;
+cl_program oclProgram;
+cl_kernel oclKernel;
+cl_mem pos_opencl = NULL;
+
+VkExternalMemoryHandleTypeFlagBits vkExternalMemoryHandleTypeFlagBits;
+VertexData vertexData_external;
+BOOL bOnGPU = FALSE;
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
@@ -431,6 +457,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
             color_from_key = 'Y';
             break;
         
+        case 'P':
+        case 'p':
+            bOnGPU = FALSE;
+            break;
+
+        case 'H':
+        case 'h':
+            bOnGPU = TRUE;
+            break;
         
         default:
             break;
@@ -493,7 +528,7 @@ VkResult initialize(void)
     VkResult getPhysicalDevice(void);
     VkResult printVKInfo(void);
     VkResult createVulkanDevice(void);
-    void getDeivceQueue(void);
+    void getDeviceQueue(void);
     VkResult createSwapchain(VkBool32);
     VkResult createImagesAndImageView(void);
     VkResult createCommandPool(void);
@@ -513,6 +548,10 @@ VkResult initialize(void)
     VkResult createFences(void);
     VkResult buildCommandBuffers(void);
     
+    // openCL related function declarations
+    cl_int initialize_opencl(void);
+    VkResult createExternalVertexBuffer(unsigned int, unsigned int, VertexData *);
+
     // variable declarations
     VkResult vkResult = VK_SUCCESS;
 
@@ -578,7 +617,20 @@ VkResult initialize(void)
     }
 
     // get device queue
-    getDeivceQueue();
+    getDeviceQueue();
+
+    // OpenCL initialization
+    oclResult = initialize_opencl();
+    if(oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> initialize_opencl() failed !!! (ERROR CODE : %d)\n\n", __func__, oclResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> initialize_opencl() success\n\n", __func__);
+    }
 
     // create swapchain
     vkResult = createSwapchain(VK_FALSE);
@@ -633,7 +685,7 @@ VkResult initialize(void)
     }
 
     // initialize signware array for 1024x1024
-    initializeSineWaveArrays(1024, 1024);
+    initializeSineWaveArrays(mesh_width, mesh_height);
 
     // create vertex buffer for 1024x1024
     memset((void *)&vertexData_position_1024x1024_graphics, 0, sizeof(VertexData));
@@ -649,7 +701,21 @@ VkResult initialize(void)
         fprintf(gpFile, "%s()-> createVertexBuffer() success for vertexData_position_1024x1024_graphics\n\n", __func__);
     }
 
-    // create
+    // create external vertex buffer
+    memset((void *)&vertexData_external, 0, sizeof(VertexData));
+    vkResult = createExternalVertexBuffer(mesh_width, mesh_height, &vertexData_external);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> createExternalVertexBuffer() failed !!! (ERROR CODE : %d)\n\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> createExternalVertexBuffer() success\n\n", __func__);
+    }
+
+    // create uniform buffer
     vkResult = createUniformBuffer();
     if (vkResult != VK_SUCCESS)
     {
@@ -820,6 +886,188 @@ VkResult initialize(void)
     fprintf(gpFile, "Initializeation successfully !!!\n\n");
     fprintf(gpFile, "================================== INITIALIZATION END ==================================\n\n");
     return (vkResult);
+}
+
+cl_int initialize_opencl(void)
+{
+    // local function declarations
+    BOOL doesOpenCLPlatformSupportRequiredExtensions(cl_platform_id);
+
+    // code
+    // check for presence of opencl device if absent no point to go ahead
+    cl_uint platform_count = 0;
+    cl_platform_id *ocl_platform_ids = NULL;
+    cl_uint device_count = 0;
+    cl_device_id *ocl_device_ids = NULL;
+
+    // get number of opencl supported platform
+    oclResult = clGetPlatformIDs(0, NULL, &platform_count);
+    if(oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> clGetPlatformIDs() failed !!!\n\n", __func__);
+        return (oclResult);
+    }
+    else if(platform_count == 0)
+    {
+        fprintf(gpFile, "%s()-> clGetPlatformIDs() platform_count = 0 !!!\n\n", __func__);
+        return (-1);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> clGetPlatformIDs() success\n\n", __func__);
+    }
+
+    // we have one or more platform get them in array
+    ocl_platform_ids = (cl_platform_id *)malloc(platform_count * sizeof(cl_platform_id));
+
+    // now get platform ids into our allocated array
+    oclResult = clGetPlatformIDs(platform_count, ocl_platform_ids, NULL);
+
+    int openCLPlatformWithGPUDeviceFound = -1;
+
+    // loop through the openCL platform array to find that openCL platform which supports GPU with required OpenCL extension
+    for(int i = 0; i < platform_count; i++)
+    {
+        // get number of devies for found platform
+        oclResult = clGetDeviceIDs(ocl_platform_ids[i], CL_DEVICE_TYPE_GPU, 0, NULL, &device_count);
+
+        if(oclResult != CL_SUCCESS)
+        {
+            continue;    
+        }
+        else if(device_count == 0)
+        {
+            continue;
+        }
+
+        // Now we have ith platform which has GPU
+        // Now see whether this GPU supports required extensions like cl_external_memory_khr, cl_khr_device_uuid, cl_khr_external_semaphore
+        if(doesOpenCLPlatformSupportRequiredExtensions(ocl_platform_ids[i]) == FALSE)
+        {
+            continue;
+        }
+
+        // now we have correct OpenCL platfrom required openCL extensions and has GPU device/devices too
+        oclPlatformID = ocl_platform_ids[i];
+
+        // print selected platform properties
+        size_t info_size;
+        char *ocl_platform_info = NULL;
+        clGetPlatformInfo(oclPlatformID, CL_PLATFORM_NAME, 0, NULL, &info_size);
+
+        ocl_platform_info = (char *)malloc(sizeof(char) * info_size);
+
+        clGetPlatformInfo(oclPlatformID, CL_PLATFORM_NAME, info_size,ocl_platform_info, NULL);
+
+        fprintf(gpFile, "%s()-> SELECTED OpenCL platform : %s\n\n", __func__, ocl_platform_info);
+
+        // free ocl_platform_info
+        if(ocl_platform_info)
+        {
+            free(ocl_platform_info);
+            ocl_platform_info = NULL;
+        }
+
+        openCLPlatformWithGPUDeviceFound = 1;
+        break;
+    }
+
+    if(ocl_platform_ids)
+    {
+        free(ocl_platform_ids);
+        ocl_platform_ids = NULL;
+    }
+
+    if(openCLPlatformWithGPUDeviceFound == -1)
+    {
+        fprintf(gpFile, "%s()-> openCL supported platform not found !!!\n\n", __func__);
+
+        return(-32); // -32 : value for invalid platform macro
+    }
+
+    // now allocate memory to hold one or more devices in found platform
+    ocl_device_ids = (cl_device_id *)malloc(device_count * sizeof(cl_device_id));
+
+    // now get one or more device ids into above array
+    oclResult = clGetDeviceIDs(oclPlatformID, CL_DEVICE_TYPE_GPU, device_count, ocl_device_ids, NULL);
+
+    cl_uchar cl_uuid[CL_UUID_SIZE_KHR];
+    
+    // get vulkan compatible device uuid
+    VkPhysicalDeviceIDProperties vkPhysicalDeviceIDProperties;
+    memset((void *)&vkPhysicalDeviceIDProperties, 0, sizeof(VkPhysicalDeviceIDProperties));
+    vkPhysicalDeviceIDProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+    vkPhysicalDeviceIDProperties.pNext = NULL;
+    
+    VkPhysicalDeviceProperties2 vkPhysicalDeviceProperties2;
+    memset((void *)&vkPhysicalDeviceProperties2, 0, sizeof(VkPhysicalDeviceProperties2));
+    vkPhysicalDeviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    vkPhysicalDeviceProperties2.pNext = &vkPhysicalDeviceIDProperties;
+
+    vkGetPhysicalDeviceProperties2(vkPhyscialDevice_selected, &vkPhysicalDeviceProperties2);
+
+    int vulkan_openCL_interOp_device_found = -1;
+
+    for(int i = 0; i < device_count; i++)
+    {
+        // get opencl capable device's uuid from openCLInfo
+        clGetDeviceInfo(ocl_device_ids[i], CL_DEVICE_UUID_KHR, sizeof(CL_UUID_SIZE_KHR), &cl_uuid, NULL);
+
+        // now compaire opencl device uuid with vulkan device uuid
+        BOOL uuidMatch = TRUE;
+        for(uint32_t j = 0; j < CL_UUID_SIZE_KHR; j++)
+        {
+            if(cl_uuid[j] != vkPhysicalDeviceIDProperties.deviceUUID[j])
+            {
+                uuidMatch = FALSE;
+                break;
+            }
+        }
+
+        // go for next device if available
+        if(uuidMatch == FALSE)
+        {
+            continue;
+        }
+
+        // otherwise device found
+        oclDeviceID = ocl_device_ids[i];
+        size_t info_size = 0;
+        char *ocl_device_info = NULL;
+
+        clGetDeviceInfo(oclDeviceID, CL_DEVICE_NAME, 0, NULL, &info_size);
+
+        ocl_device_info = (char *)malloc(info_size * sizeof(char));
+
+        clGetDeviceInfo(oclDeviceID, CL_DEVICE_NAME, info_size, ocl_device_info, NULL);
+
+        fprintf(gpFile, "%s()-> SELECTED OpenCL device : %s\n\n", __func__, ocl_device_info);
+
+        // free ocl_device_info
+        if(ocl_device_info)
+        {
+            free(ocl_device_info);
+            ocl_device_info = NULL;
+        }
+
+        vulkan_openCL_interOp_device_found = 1;
+
+        break;
+    }
+
+    free(ocl_device_ids);
+    ocl_device_ids = NULL;
+
+    // if no such openCL interop device found 
+    if(openCLPlatformWithGPUDeviceFound == -1)
+    {
+        fprintf(gpFile, "%s()-> openCL supported platform not found !!!\n\n", __func__);
+
+        return(-2); // -2 : value for invalid device macro
+    }
+
+    // create OpenCL context
+    
 }
 
 VkResult resize(int width, int height)
@@ -2269,13 +2517,19 @@ VkResult fillDeviceExtensionNames(void)
 
     // 5. find whether above extension names contain our required extentions (VK_KHR_SWAPCHAIN_EXTENSION_NAME) accordingly set two global variable.
     VkBool32 vulkanSwapchainExtensionFound = VK_FALSE;
-
+    VkBool32 vulkanExternalMemoryWin32ExtensionFound = VK_FALSE;
     for (uint32_t i = 0; i < deviceExtensionCount; i++)
     {
         if (strcmp(deviceExtensionNames_array[i], VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0)
         {
             vulkanSwapchainExtensionFound = VK_TRUE;
             enabledDeviceExtensionNames_array[enabledDeviceExtensionCount++] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+        }
+
+         if (strcmp(deviceExtensionNames_array[i], VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME) == 0)
+        {
+            vulkanExternalMemoryWin32ExtensionFound = VK_TRUE;
+            enabledDeviceExtensionNames_array[enabledDeviceExtensionCount++] = VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME;
         }
     }
 
@@ -2305,6 +2559,17 @@ VkResult fillDeviceExtensionNames(void)
     else
     {
         fprintf(gpFile, "\n\n%s()-> VK_KHR_SWAPCHAIN_EXTENSION_NAME FOUND !!!\n", __func__);
+    }
+
+    if (vulkanExternalMemoryWin32ExtensionFound == VK_FALSE)
+    {
+        vkResult = VK_ERROR_INITIALIZATION_FAILED; // return hardcoded failure
+        fprintf(gpFile, "\n\n%s()-> VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME NOT FOUND !!!\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "\n\n%s()-> VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME FOUND !!!\n", __func__);
     }
 
     // 8. Print only supported extension names.
@@ -2385,7 +2650,7 @@ VkResult createVulkanDevice(void)
     return (vkResult);
 }
 
-void getDeivceQueue(void)
+void getDeviceQueue(void)
 {
     // code
     fprintf(gpFile, "\n======================== STEPS FOR GETTING VULKAN DEVICE QUEUE START ================================\n\n");
