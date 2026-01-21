@@ -1067,7 +1067,227 @@ cl_int initialize_opencl(void)
     }
 
     // create OpenCL context
+    oclContext = clCreateContext(NULL, 1, &oclDeviceID, NULL, NULL, &oclResult);
+    if(oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> clCreateContext() failed !!!\n\n", __func__);
+        return(oclResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> clCreateContext() success\n\n", __func__);
+    }
+
+    // create OpenCL command queue
+    oclCommandQueue = clCreateCommandQueueWithProperties(oclContext, oclDeviceID, 0, &oclResult);
+    if(oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> clCreateCommandQueueWithProperties() failed !!!\n\n", __func__);
+        return(oclResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> clCreateCommandQueueWithProperties() success\n\n", __func__);
+    }
+
+    // crete OpenCL program from OpenCL kernel code
+    const char *oclKernelSourceCode = 
+        "__kernel void sineWaveKernel(__global float4 * pos, int width, int height, float time)" \
+        "{ "\
+        "int x = get_global_id(0);"\
+        "int y = get_global_id(1);"\
+
+        "float u = (float)x / (float)width;" \
+        "float v = (float)y / (float)height;" \
+
+        "u = u * 2.0f - 1.0f;" \
+        "v = v * 2.0f - 1.0f;" \
+
+        "float frequency = 4.0f;" \
+
+        "float w = sin(u * frequency + time) * cos(v * frequency + time) * 0.5f;" \
+
+        "pos[y * width + x] = (float4)(u, w, v, 1.0f);" \
+        "}";
+
+    oclProgram = clCreateProgramWithSource(oclContext, 1, (const char **)&oclKernelSourceCode, NULL, &oclResult);
+    if(oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> clCreateProgramWithSource() failed !!!\n\n", __func__);
+        return(oclResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> clCreateProgramWithSource() success\n\n", __func__);
+    }
     
+    // build opencl program
+    oclResult = clBuildProgram(oclProgram, 0, NULL, "-cl-fast-relaxed-math", NULL, NULL);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> clBuildProgram() failed !!!\n\n", __func__);
+
+        // get build error 
+        cl_int oclBuildResult;
+        char szBuffer[1024];
+
+        oclBuildResult = clGetProgramBuildInfo(oclProgram, oclDeviceID, CL_PROGRAM_BUILD_LOG, sizeof(szBuffer), szBuffer, NULL);
+        if (oclBuildResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> clGetProgramBuildInfo() failed !!!\n\n", __func__);
+        }
+        else
+        {
+            fprintf(gpFile, "%s()-> OpenCL program build error : %s", __func__, szBuffer);
+        }
+        return(oclResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> clBuildProgram() success\n\n", __func__);
+    }
+
+    // create opencl kernel
+    oclKernel = clCreateKernel(oclProgram, "sineWaveKernel", &oclResult);
+    if(oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> clCreateKernel() failed !!!\n\n", __func__);
+        return(oclResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> clCreateKernel() success\n\n", __func__);
+    }
+
+    vkExternalMemoryHandleTypeFlagBits = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+
+    return(CL_SUCCESS);
+}
+
+BOOL doesOpenCLPlatformSupportRequiredExtensions(cl_platform_id ocl_platform_id)
+{
+    // variable declarations
+    size_t extensionSize = 0;
+    char *oclPlatformExtensions = NULL;
+
+    // list given platforms extension
+    oclResult = clGetPlatformInfo(ocl_platform_id, CL_PLATFORM_EXTENSIONS, 0, NULL, &extensionSize); // for get count
+
+    oclPlatformExtensions = (char *)malloc(sizeof(char) * extensionSize);
+
+    oclResult = clGetPlatformInfo(ocl_platform_id, CL_PLATFORM_EXTENSIONS, extensionSize, oclPlatformExtensions, NULL); // for fill oclPlatformExtensions
+
+    char *oclPlatformExtensions_copy_for_strtok = NULL;
+
+    oclPlatformExtensions_copy_for_strtok = (char *)malloc(sizeof(char) * extensionSize);
+
+    strcpy(oclPlatformExtensions_copy_for_strtok, oclPlatformExtensions);
+
+    // find out how many extensions are found
+    char *token = strtok(oclPlatformExtensions_copy_for_strtok, " ");
+
+    int i = 0;
+
+    while(token != NULL)
+    {
+        i++;
+        token = strtok(NULL, " ");
+    }
+
+    int extensionCount = i;
+
+    fprintf(gpFile, "%s() -> opencl extension count : %d\n\n", __func__, extensionCount);
+
+    // create array of lengths of names of each found extensions
+    int *extensionLengths_array = NULL;
+    extensionLengths_array = (int *)malloc(extensionCount * sizeof(int));
+
+    strcpy(oclPlatformExtensions_copy_for_strtok, oclPlatformExtensions);
+    token = strtok(oclPlatformExtensions_copy_for_strtok, " ");
+    
+    i = 0;
+    while(token != NULL)
+    {
+        extensionLengths_array[i] = strlen(token) + 1;
+        token = strtok(NULL, " ");
+        i++;
+    }
+    
+    // accordingly allocate such that it holds string equal to extension count taken from extension names are 
+    char **clExtensions_array = NULL;
+
+    clExtensions_array = (char **)malloc(sizeof(char *) * extensionCount);
+
+    for(int i = 0; i < extensionCount; i++)
+    {
+        clExtensions_array[i] = (char *)malloc(sizeof(char) * extensionLengths_array[i]);
+    }
+
+    // now actually get all extensions in above 2D array
+
+    strcpy(oclPlatformExtensions_copy_for_strtok, oclPlatformExtensions);
+    token = strtok(oclPlatformExtensions_copy_for_strtok, " ");
+    
+    i = 0;
+    while(token != NULL)
+    {
+        memcpy(clExtensions_array[i], token, sizeof(extensionLengths_array[i]));
+
+        token = strtok(NULL, " ");
+        i++;
+    }
+
+    free(oclPlatformExtensions_copy_for_strtok);
+    oclPlatformExtensions_copy_for_strtok = NULL;
+
+    // print all supported opencl extensions
+    for(i = 0; i < extensionCount; i++)
+    {
+        fprintf(gpFile, "%s() -> OpenCL supported extension :  %s\n", __func__, clExtensions_array[i]);
+    }
+
+    // now compair in extension array to see whether our required opencl extension for vulkan opencl interoperability
+    int clKHRDeviceUUIDExtensionFound = 0;
+    int clKHRExternalMemoryExtensionFound = 0;
+
+    for(i = 0; i < extensionCount; i++)
+    {
+        // call cl_khr_device_uuid extension
+        if(strcmp(clExtensions_array[i], "cl_khr_device_uuid") == 0)
+        {
+            clKHRDeviceUUIDExtensionFound = 1;
+        }
+
+        // call cl_khr_external_memory extension
+        if(strcmp(clExtensions_array[i], "cl_khr_external_memory") == 0)
+        {
+            clKHRExternalMemoryExtensionFound = 1;
+        }
+    }
+
+    // free the memroy
+    for(i = 0; i < extensionCount; i++)
+    {
+        free(clExtensions_array[i]);
+        clExtensions_array[i] = NULL;
+    }
+
+    free(clExtensions_array);
+    clExtensions_array = NULL;
+
+    free(extensionLengths_array);
+    extensionLengths_array = NULL;
+
+    free(oclPlatformExtensions);
+    oclPlatformExtensions = NULL;
+
+    BOOL bResult = FALSE;
+    if(clKHRDeviceUUIDExtensionFound == 1 && clKHRExternalMemoryExtensionFound == 1)
+    {
+        bResult = TRUE;
+    }
+    
+    return(bResult);
 }
 
 VkResult resize(int width, int height)
@@ -1295,6 +1515,7 @@ VkResult display(void)
     VkResult resize(int, int);
     VkResult updateUniformBuffer(void);
     VkResult buildCommandBuffers(void);
+    VkResult prepareSineWaveForCPU(unsigned int, unsigned int, float);
 
     // variable declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1309,9 +1530,107 @@ VkResult display(void)
         return((VkResult)VK_FALSE);
     }
 
-    if(bMesh_1024_chosen == TRUE)
+    // CPU or GPU
+    if(bOnGPU == TRUE)
     {
-        vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+        // set opencl kernels first argument i.e 0th
+        oclResult = clSetKernelArg(oclKernel, 0, sizeof(cl_mem), (void *)&pos_opencl);
+        if(oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> clSetKernelArg() failed for 0th !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        // set opencl kernels second argument i.e 1st 
+        oclResult = clSetKernelArg(oclKernel, 1, sizeof(cl_uint), &mesh_width);
+        if(oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> clSetKernelArg() failed for 1st !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        // set opencl kernels third argument i.e 2nd 
+        oclResult = clSetKernelArg(oclKernel, 2, sizeof(cl_uint), (void *)&mesh_height);
+        if(oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> clSetKernelArg() failed for 2nd !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        // set opencl kernels fourth argument i.e 3rd
+        oclResult = clSetKernelArg(oclKernel, 3, sizeof(cl_float), (void *)&animation_time);
+        if(oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> clSetKernelArg() failed for 3rd !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        // map vulkan buffer for writting by opencl
+        clEnqueueAcquireExternalMemObjectsKHR_fn clEnqueueAcquireExternalMemObjectsKHR = NULL;
+
+        clEnqueueAcquireExternalMemObjectsKHR = (clEnqueueAcquireExternalMemObjectsKHR_fn)clGetExtensionFunctionAddressForPlatform(oclPlatformID, "clEnqueueAcquireExternalMemObjectsKHR");
+        if(clEnqueueAcquireExternalMemObjectsKHR == NULL)
+        {
+            fprintf(gpFile, "%s()-> clGetExtensionFunctionAddressForPlatform() failed !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        oclResult = clEnqueueAcquireExternalMemObjectsKHR(oclCommandQueue, 1, &pos_opencl, 0, NULL, NULL);
+        if(oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> clEnqueueAcquireExternalMemObjectsKHR() failed !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        // run opencl kernel
+        size_t globalWorkSize[2];
+
+        globalWorkSize[0] = mesh_width;
+        globalWorkSize[1] = mesh_height;
+
+        oclResult = clEnqueueNDRangeKernel(oclCommandQueue, oclKernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
+        if(oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> clEnqueueNDRangeKernel() failed !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        // release the enqueued opencl buffer to get back to vulkan to rendering
+        clEnqueueReleaseExternalMemObjectsKHR_fn clEnqueueReleaseExternalMemObjectsKHR = NULL;
+
+        clEnqueueReleaseExternalMemObjectsKHR = (clEnqueueReleaseExternalMemObjectsKHR_fn)clGetExtensionFunctionAddressForPlatform(oclPlatformID, "clEnqueueReleaseExternalMemObjectsKHR");
+        if(clEnqueueReleaseExternalMemObjectsKHR == NULL)
+        {
+            fprintf(gpFile, "%s()-> clGetExtensionFunctionAddressForPlatform() failed !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        oclResult = clEnqueueReleaseExternalMemObjectsKHR(oclCommandQueue, 1, &pos_opencl, 0, NULL, NULL);
+        if(oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s()-> clEnqueueReleaseExternalMemObjectsKHR() failed !!!\n\n", __func__);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return(vkResult);
+        }
+
+        // finish opencl command queue
+        clFinish(oclCommandQueue);
+    }
+    else
+    {
+        if(bMesh_1024_chosen == TRUE)
+        {
+            prepareSineWaveForCPU(1024, 1024, animation_time);
+            vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+        }
     }
 
     vkResult = buildCommandBuffers();
