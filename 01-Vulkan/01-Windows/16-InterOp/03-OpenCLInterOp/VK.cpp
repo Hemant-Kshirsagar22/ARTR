@@ -1011,7 +1011,7 @@ cl_int initialize_opencl(void)
     for(int i = 0; i < device_count; i++)
     {
         // get opencl capable device's uuid from openCLInfo
-        clGetDeviceInfo(ocl_device_ids[i], CL_DEVICE_UUID_KHR, sizeof(CL_UUID_SIZE_KHR), &cl_uuid, NULL);
+        clGetDeviceInfo(ocl_device_ids[i], CL_DEVICE_UUID_KHR, CL_UUID_SIZE_KHR, &cl_uuid, NULL);
 
         // now compaire opencl device uuid with vulkan device uuid
         BOOL uuidMatch = TRUE;
@@ -1231,7 +1231,7 @@ BOOL doesOpenCLPlatformSupportRequiredExtensions(cl_platform_id ocl_platform_id)
     i = 0;
     while(token != NULL)
     {
-        memcpy(clExtensions_array[i], token, sizeof(extensionLengths_array[i]));
+        memcpy(clExtensions_array[i], token, extensionLengths_array[i]);
 
         token = strtok(NULL, " ");
         i++;
