@@ -1629,10 +1629,11 @@ VkResult display(void)
         if(bMesh_1024_chosen == TRUE)
         {
             prepareSineWaveForCPU(1024, 1024, animation_time);
-            vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
         }
     }
-
+    
+    vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
+    
     vkResult = buildCommandBuffers();
     if (vkResult != VK_SUCCESS)
     {
@@ -1754,8 +1755,8 @@ void update(void)
 void uninitialize(void)
 {
     // Function Declarations
-
     void ToggleFullScreen(void);
+    cl_int uninitialize_opencl(void);
 
     // code
     // if Application is exitting in fullscreen
@@ -1892,6 +1893,33 @@ void uninitialize(void)
         fprintf(gpFile, "%s()-> uniformData.vkBuffer is freed\n", __func__);
     }
 
+    // uninitialize opencl
+    oclResult = uninitialize_opencl();
+    if(oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> uninitialize_opencl() failed !!!\n", __func__);
+        return;
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> uninitialize_opencl() success\n", __func__);
+    }
+
+    // free external vertex buffer
+    if(vertexData_external.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_external.vkDeviceMemory, NULL);
+        vertexData_external.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_external.vkDeviceMemory is freed\n", __func__);
+    }
+
+    if(vertexData_external.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_external.vkBuffer, NULL);
+        vertexData_external.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s()-> vertexData_external.vkBuffer is freed\n", __func__);
+    }
+
     // free vkDevice memory
     if(vertexData_position_1024x1024_graphics.vkDeviceMemory)
     {
@@ -2023,6 +2051,43 @@ void uninitialize(void)
         gpFile = NULL;
     }
 }
+
+cl_int uninitialize_opencl(void)
+{
+    // code
+    if(pos_opencl)
+    {
+        clReleaseMemObject(pos_opencl);
+        pos_opencl = NULL;
+    }
+
+    if(oclKernel)
+    {
+        clReleaseKernel(oclKernel);
+        oclKernel = NULL;
+    }
+
+    if(oclProgram)
+    {
+        clReleaseProgram(oclProgram);
+        oclProgram = NULL;
+    }
+
+    if(oclCommandQueue)
+    {
+        clReleaseCommandQueue(oclCommandQueue);
+        oclCommandQueue = NULL;
+    }
+
+    if(oclContext)
+    {
+        clReleaseContext(oclContext);
+        oclContext = NULL;
+    }
+
+    return(CL_SUCCESS);
+}
+
 // ----------------------------------------------------------------------------------------------
 //                        VULKAN RELATED FUNCTION DEFINATIONS
 // ----------------------------------------------------------------------------------------------
@@ -3719,6 +3784,177 @@ VkResult createVertexBuffer(unsigned int mesh_width, unsigned int mesh_height, V
     return(vkResult);
 }
 
+VkResult createExternalVertexBuffer(unsigned int mesh_width, unsigned int mesh_height, VertexData *pVertexData)
+{
+    // local variable declarations
+    VkResult vkResult = VK_SUCCESS;
+    VertexData vertexData_position;
+    unsigned int size = mesh_width * mesh_height * 4 * sizeof(float);
+
+    // code
+    fprintf(gpFile, "\n======================== CREATE EXTERNAL VERTEX BUFFER START ================================\n\n");
+
+    // initialize external memory buffer info
+    VkExternalMemoryBufferCreateInfo vkExternalMemoryBufferCreateInfo;
+    memset((void *)&vkExternalMemoryBufferCreateInfo, 0, sizeof(VkExternalMemoryBufferCreateInfo));
+
+    vkExternalMemoryBufferCreateInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO;
+    vkExternalMemoryBufferCreateInfo.pNext = NULL;
+    vkExternalMemoryBufferCreateInfo.handleTypes = vkExternalMemoryHandleTypeFlagBits;
+    
+    // memset our global vertexData_position struct.
+    memset((void *)&vertexData_position, 0, sizeof(VertexData));
+
+    //  declare and memset struct VkBufferCreateInfo
+    VkBufferCreateInfo vkBufferCreateInfo;
+    memset((void *)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
+
+    vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vkBufferCreateInfo.pNext = &vkExternalMemoryBufferCreateInfo;
+    vkBufferCreateInfo.flags = 0; // flags are used for scatterd / sparce buffer
+    vkBufferCreateInfo.size = size;
+    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    // call vkCreateBuffer() vulkan api in the .vkBuffer member of our global struct.
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_position.vkBuffer);
+
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> vkCreateBuffer() failed !!!\n\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> vkCreateBuffer() call success\n\n", __func__);
+    }
+
+    VkMemoryRequirements vkMemoryRequirements;
+    memset((void *)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
+
+    vkGetBufferMemoryRequirements(vkDevice, vertexData_position.vkBuffer, &vkMemoryRequirements);
+
+    // initialize exportable memory allocation
+    VkExportMemoryAllocateInfoKHR vkExportMemoryAllocateInfoKHR;
+    memset((void *)&vkExportMemoryAllocateInfoKHR, 0, sizeof(VkExportMemoryAllocateInfoKHR));
+    vkExportMemoryAllocateInfoKHR.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR;
+    vkExportMemoryAllocateInfoKHR.pNext = NULL;
+    vkExportMemoryAllocateInfoKHR.handleTypes = vkExternalMemoryHandleTypeFlagBits;
+
+    VkMemoryAllocateInfo vkMemeoryAllocateInfo;
+    memset((void *)&vkMemeoryAllocateInfo, 0, sizeof(vkMemeoryAllocateInfo));
+
+    vkMemeoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    vkMemeoryAllocateInfo.pNext = &vkExportMemoryAllocateInfoKHR;
+    vkMemeoryAllocateInfo.allocationSize = vkMemoryRequirements.size;
+
+    vkMemeoryAllocateInfo.memoryTypeIndex = 0; // inital value before entring loop
+
+    for(uint32_t i = 0; i < vkPhysicalDeviceMemoryProperties.memoryTypeCount; i++)
+    {
+        if((vkMemoryRequirements.memoryTypeBits & 1) == 1)
+        {
+            if(vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+            {
+                vkMemeoryAllocateInfo.memoryTypeIndex = i;
+                break;
+            }
+        }
+
+        vkMemoryRequirements.memoryTypeBits >>= 1;
+    }
+
+    vkResult = vkAllocateMemory(vkDevice, &vkMemeoryAllocateInfo, NULL, &vertexData_position.vkDeviceMemory);
+
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> vkAllocateMemory() for vertexData_position.vkDeviceMemory failed !!!\n\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> vkAllocateMemory() call success for vertexData_position.vkDeviceMemory\n\n", __func__);
+    }
+
+    vkResult = vkBindBufferMemory(vkDevice, vertexData_position.vkBuffer, vertexData_position.vkDeviceMemory, 0);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s()-> vkBindBufferMemory() failed !!!\n\n", __func__);
+        return (vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s()-> vkBindBufferMemory() call success\n\n", __func__);
+    }
+
+    // opencl code
+    HANDLE hMemoryWin32Handle = NULL;
+
+    VkMemoryGetWin32HandleInfoKHR vkMemoryGetWin32HandleInfoKHR;
+    memset((void *)&vkMemoryGetWin32HandleInfoKHR, 0, sizeof(VkMemoryGetWin32HandleInfoKHR));
+
+    vkMemoryGetWin32HandleInfoKHR.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
+    vkMemoryGetWin32HandleInfoKHR.pNext = NULL;
+    vkMemoryGetWin32HandleInfoKHR.memory = vertexData_position.vkDeviceMemory;
+    vkMemoryGetWin32HandleInfoKHR.handleType = vkExternalMemoryHandleTypeFlagBits;
+
+    PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR = NULL;
+    vkGetMemoryWin32HandleKHR = (PFN_vkGetMemoryWin32HandleKHR)vkGetDeviceProcAddr(vkDevice, "vkGetMemoryWin32HandleKHR");
+
+    if(vkGetMemoryWin32HandleKHR == NULL)
+    {
+        fprintf(gpFile, "%s() -> vkGetMemoryWin32HandleKHR is NULL !!!\n\n", __func__);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return(vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s() -> vkGetMemoryWin32HandleKHR get success !!!\n\n", __func__);
+    }
+
+    vkResult = vkGetMemoryWin32HandleKHR(vkDevice, &vkMemoryGetWin32HandleInfoKHR, &hMemoryWin32Handle);
+    if(vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() -> vkGetMemoryWin32HandleKHR() failed !!!\n\n", __func__);
+        return(vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s() -> vkGetMemoryWin32HandleKHR() success\n\n", __func__);
+    }
+
+    // map above external buffer memory into opencl to get the device pointer from opencl
+    cl_mem_properties oclMemoryProperties_array[] = 
+    {
+        CL_EXTERNAL_MEMORY_HANDLE_OPAQUE_WIN32_KHR, (cl_mem_properties)hMemoryWin32Handle,
+        CL_DEVICE_HANDLE_LIST_KHR, (cl_mem_properties)oclDeviceID, CL_DEVICE_HANDLE_LIST_END_KHR,
+        0
+    };
+
+    // create opencl compatible external buffer from above vulkan buffer
+    pos_opencl = clCreateBufferWithProperties(oclContext, oclMemoryProperties_array, CL_MEM_READ_WRITE, vkMemoryRequirements.size, NULL, &oclResult);
+    
+    if(oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() -> clCreateBufferWithProperties() failed !!!\n\n", __func__);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return(vkResult);
+    }
+    else
+    {
+        fprintf(gpFile, "%s() -> clCreateBufferWithProperties() success\n\n", __func__);
+    }
+
+    if(hMemoryWin32Handle)
+    {
+        CloseHandle(hMemoryWin32Handle);
+        hMemoryWin32Handle = NULL;
+    }
+
+    *pVertexData = vertexData_position;
+
+    return(vkResult);
+}
+
 VkResult createUniformBuffer(void)
 {
     // function declarations
@@ -4720,7 +4956,6 @@ VkResult createFences(void)
 
 VkResult buildCommandBuffers(void)
 {
-    VkResult prepareSineWaveForCPU(unsigned int, unsigned int, float);
     // variable declarations
     VkResult vkResult = VK_SUCCESS;
     VkCommandBuffer *vkCommandBuffer_array = NULL;
@@ -4729,7 +4964,6 @@ VkResult buildCommandBuffers(void)
     
     if(bMesh_1024_chosen == TRUE) 
     {
-        prepareSineWaveForCPU(1024, 1024, animation_time);
         vkCommandBuffer_array = vkCommandBuffer_for_1024x1024_graphics_array;
     }
 
@@ -4823,17 +5057,30 @@ VkResult buildCommandBuffers(void)
         
 
         // here we should call vulkan drawing functions
-        if(bMesh_1024_chosen == TRUE)
+        if(bOnGPU == FALSE)
         {
-            vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_1024x1024_graphics.vkBuffer, vkDeviceSize_offset_array);
+            if(bMesh_1024_chosen == TRUE)
+            {
+                vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_position_1024x1024_graphics.vkBuffer, vkDeviceSize_offset_array);
+                vkCmdDraw(vkCommandBuffer_array[i],
+                    1024 * 1024, // no of vertices
+                    1, // no of instance
+                    0, // first vertex
+                    0 // first instace
+                );
+            }
+        }
+        else
+        {
+            vkCmdBindVertexBuffers(vkCommandBuffer_array[i], 0, 1, &vertexData_external.vkBuffer, vkDeviceSize_offset_array);
             vkCmdDraw(vkCommandBuffer_array[i],
-                1024 * 1024, // no of vertices
+                mesh_width * mesh_height, // no of vertices
                 1, // no of instance
                 0, // first vertex
                 0 // first instace
             );
-
         }
+        
         // end render pass
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);
 
