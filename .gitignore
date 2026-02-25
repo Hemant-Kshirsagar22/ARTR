@@ -1,4 +1,5 @@
 .DS_Store
+.idea/
 
 *.obj
 *.res
@@ -12,3 +13,8 @@ XWindow.o
 
 VK
 VK.o
+
+build/
+local.properties
+.gradle/
+.cxx
