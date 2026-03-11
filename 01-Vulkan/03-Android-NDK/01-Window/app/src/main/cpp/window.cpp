@@ -1,8 +1,96 @@
-#include <stdio.h>
-#include <android/log.h>
-#include <android_native_app_glue.h>
+#include <android_native_app_glue.h> // everything related to pure native activity we need this mainly android_main() and android_app struct
+#include <android/log.h> // for __android_log_print()
 
-void android_main(struct android_app* state)
+#include <memory.h> // for memset()
+
+typedef struct {
+    struct android_app *app;
+    bool bActive;
+} Engine;
+ANativeWindow *androidNativeWindow = NULL;
+
+// global callback function declarations
+void engine_handle_cmd(struct android_app *, int32_t);
+int32_t engine_handle_input(struct android_app *, AInputEvent *);
+
+void android_main(struct android_app *state)
 {
-    __android_log_print(ANDROID_LOG_INFO, "HGK:", "Hello World !!!");
+    // code
+    Engine engine;
+    memset((void *)&engine, 0, sizeof(Engine));
+
+    // initialize state
+    state->userData = &engine;
+    state->onAppCmd = engine_handle_cmd;
+    state->onInputEvent = engine_handle_input;
+
+    engine.app = state;
+    __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> started successfully !!!", __func__);
+
+    while(1)
+    {
+        int identifyer = 0;
+        struct android_poll_source *source = NULL;
+
+        while((identifyer = ALooper_pollOnce(engine.bActive ? 0 : -1, NULL, NULL, (void **)&source)) >= 0)
+        {
+            // process system events
+            if(source != NULL)
+            {
+                source->process(state, source);
+            }
+
+            // check when to exit
+            if(state->destroyRequested != 0)
+            {
+                return;
+            }
+        }
+    }
+}
+
+void engine_handle_cmd(struct android_app *app, int32_t cmd)
+{
+    Engine *engine = (Engine *)app->userData;
+
+    switch (cmd)
+    {
+    case APP_CMD_SAVE_STATE:
+        engine->bActive = false;
+        break;
+    
+    case APP_CMD_INIT_WINDOW:
+        if(engine->app->window != NULL)
+        {
+            androidNativeWindow = engine->app->window;
+            __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> window is created", __func__);
+        }
+        else
+        {
+            androidNativeWindow = NULL;
+        }
+        engine->bActive = true;
+        break;
+    
+    case APP_CMD_TERM_WINDOW:
+        __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> window is destroyed", __func__);
+        break;
+
+    case APP_CMD_GAINED_FOCUS:
+        __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> window has got focus", __func__);
+        engine->bActive = true;
+        break;
+    
+    case APP_CMD_LOST_FOCUS:
+        __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> window has lost focus", __func__);
+        engine->bActive = false;
+        break;
+    default:
+        break;
+    }
+}
+
+int32_t engine_handle_input(struct android_app *app, AInputEvent *event)
+{
+    return(0);
 }
