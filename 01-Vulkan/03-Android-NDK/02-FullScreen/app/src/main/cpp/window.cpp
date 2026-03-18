@@ -17,7 +17,7 @@ void android_main(struct android_app *state)
 {
     // code
     __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> started successfully !!!", __func__);
-    
+
     // fullscreen and hide status bar
     JavaVM *vm = state->activity->vm;
     JNIEnv *env = NULL;
@@ -108,14 +108,37 @@ void engine_handle_cmd(struct android_app *app, int32_t cmd)
     case APP_CMD_INIT_WINDOW:
         if(engine->app->window != NULL)
         {
+            engine->bActive = true;
             androidNativeWindow = engine->app->window;
+            // draw backgroud color with pixel by pixel coloring by cpu
+            ANativeWindow_Buffer buffer;
+            uint32_t *pixels = NULL;
+            uint32_t color;
+            int x, y;
+
+            // set the buffer geometry and format
+            ANativeWindow_setBuffersGeometry(androidNativeWindow, 0, 0, WINDOW_FORMAT_RGBA_8888);
+
+            if(ANativeWindow_lock(androidNativeWindow, &buffer, NULL) == 0)
+            {
+                pixels = (uint32_t *)buffer.bits;
+                color = 0xFFFF00FF;
+
+                for(y = 0; y < buffer.height; y++)
+                {
+                    for(x = 0; x < buffer.width; x++)
+                    {
+                        pixels[y * buffer.stride, + x] = color;
+                    }
+                }
+                ANativeWindow_unlockAndPost(androidNativeWindow);
+            }
             __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> window is created", __func__);
         }
         else
         {
             androidNativeWindow = NULL;
         }
-        engine->bActive = true;
         break;
     
     case APP_CMD_TERM_WINDOW:
