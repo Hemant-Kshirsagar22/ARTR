@@ -16,19 +16,52 @@ int32_t engine_handle_input(struct android_app *, AInputEvent *);
 void android_main(struct android_app *state)
 {
     // code
-
-    // fullscreen 
+    __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> started successfully !!!", __func__);
+    
+    // fullscreen and hide status bar
     JavaVM *vm = state->activity->vm;
     JNIEnv *env = NULL;
 
-    vm->AttachCurrentThread(&env, 0);
+    vm->AttachCurrentThread(&env, NULL);
     jobject activityObject = state->activity->clazz;
     jclass activityClass = env->GetObjectClass(activityObject);
     jclass windowClass = env->FindClass("android/view/Window");
     jclass viewClass = env->FindClass("android/view/View");
 
     // get window method
-    jmethodID getWindowMethod = env->GetMethodID(activityClass, "getWindow", "()LAndroid/view/Window;");
+    jmethodID getWindowMethod = env->GetMethodID(activityClass, "getWindow", "()Landroid/view/Window;");
+    jobject windowObject = env->CallObjectMethod(activityObject, getWindowMethod);
+
+    jmethodID getDecorViewMethod = env->GetMethodID(windowClass, "getDecorView", "()Landroid/view/View;");
+    jobject decorViewObject = env->CallObjectMethod(windowObject, getDecorViewMethod);
+
+    // get eight view class static fields
+    const int flag_SYSTEM_UI_FLAG_IMMERSIVE = env->GetStaticIntField(viewClass, env->GetStaticFieldID(viewClass, "SYSTEM_UI_FLAG_IMMERSIVE", "I"));
+    const int flag_SYSTEM_UI_FLAG_LAYOUT_STABLE = env->GetStaticIntField(viewClass, env->GetStaticFieldID(viewClass, "SYSTEM_UI_FLAG_LAYOUT_STABLE", "I"));
+    const int flag_SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION = env->GetStaticIntField(viewClass, env->GetStaticFieldID(viewClass, "SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION", "I"));
+    const int flag_SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN = env->GetStaticIntField(viewClass, env->GetStaticFieldID(viewClass, "SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN", "I"));
+    const int flag_SYSTEM_UI_FLAG_HIDE_NAVIGATION = env->GetStaticIntField(viewClass, env->GetStaticFieldID(viewClass, "SYSTEM_UI_FLAG_HIDE_NAVIGATION", "I"));
+    const int flag_SYSTEM_UI_FLAG_FULLSCREEN = env->GetStaticIntField(viewClass, env->GetStaticFieldID(viewClass, "SYSTEM_UI_FLAG_FULLSCREEN", "I"));
+    const int flag_SYSTEM_UI_FLAG_LOW_PROFILE = env->GetStaticIntField(viewClass, env->GetStaticFieldID(viewClass, "SYSTEM_UI_FLAG_LOW_PROFILE", "I"));
+    const int flag_SYSTEM_UI_FLAG_IMMERSIVE_STICKY = env->GetStaticIntField(viewClass, env->GetStaticFieldID(viewClass, "SYSTEM_UI_FLAG_IMMERSIVE_STICKY", "I"));
+
+    jmethodID setSystemUiVisibilityMethod = env->GetMethodID(viewClass, "setSystemUiVisibility", "(I)V");
+
+    env->CallVoidMethod(
+        decorViewObject, 
+        setSystemUiVisibilityMethod, 
+        flag_SYSTEM_UI_FLAG_IMMERSIVE |
+        flag_SYSTEM_UI_FLAG_LAYOUT_STABLE |
+        flag_SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+        flag_SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+        flag_SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+        flag_SYSTEM_UI_FLAG_FULLSCREEN |
+        flag_SYSTEM_UI_FLAG_LOW_PROFILE |
+        flag_SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+    );
+
+    // detach vm from current thread
+    vm->DetachCurrentThread();
 
     Engine engine;
     memset((void *)&engine, 0, sizeof(Engine));
@@ -39,7 +72,6 @@ void android_main(struct android_app *state)
     state->onInputEvent = engine_handle_input;
 
     engine.app = state;
-    __android_log_print(ANDROID_LOG_INFO, "HGK:", "%s() -> started successfully !!!", __func__);
 
     while(1)
     {
