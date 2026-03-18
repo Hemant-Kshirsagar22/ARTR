@@ -128,7 +128,7 @@ void engine_handle_cmd(struct android_app *app, int32_t cmd)
                 {
                     for(x = 0; x < buffer.width; x++)
                     {
-                        pixels[y * buffer.stride, + x] = color;
+                        pixels[y * buffer.stride + x] = color;
                     }
                 }
                 ANativeWindow_unlockAndPost(androidNativeWindow);
